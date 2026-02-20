@@ -4,12 +4,30 @@ import BottomNav from "@/components/BottomNav";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useCheckInLockdown } from "@/hooks/useCheckInLockdown";
 
 const CheckInPage = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
   const [lastCheckIn, setLastCheckIn] = useState<Date | null>(null);
   const [prefs, setPrefs] = useState<{ share_battery: boolean; share_app_usage: boolean } | null>(null);
+  const [checkInDue, setCheckInDue] = useState(false);
+
+  // Lockdown mode: fullscreen + vibration when check-in is due
+  useCheckInLockdown(checkInDue);
+
+  // Determine if check-in is due (no check-in today)
+  useEffect(() => {
+    if (!lastCheckIn) {
+      // No check-ins at all → due
+      if (user) setCheckInDue(true);
+      return;
+    }
+    const now = new Date();
+    const lastDate = lastCheckIn.toDateString();
+    const todayDate = now.toDateString();
+    setCheckInDue(lastDate !== todayDate);
+  }, [lastCheckIn, user]);
 
   useEffect(() => {
     if (!user) return;
@@ -54,6 +72,11 @@ const CheckInPage = () => {
     const { error } = await supabase.from("check_ins").insert(insertData);
     if (!error) {
       setLastCheckIn(new Date());
+      setCheckInDue(false);
+      // Success vibration
+      if ("vibrate" in navigator) {
+        navigator.vibrate([100, 50, 100]);
+      }
     }
   };
 
