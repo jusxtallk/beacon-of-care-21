@@ -1,15 +1,26 @@
-import { Heart, Clock, Settings } from "lucide-react";
+import { Heart, Clock, Settings, LayoutDashboard } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
-
-const tabs = [
-  { path: "/", icon: Heart, label: "Check In" },
-  { path: "/history", icon: Clock, label: "History" },
-  { path: "/settings", icon: Settings, label: "Settings" },
-];
+import { useAuth } from "@/hooks/useAuth";
 
 const BottomNav = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { role } = useAuth();
+
+  const isElder = role === "elder";
+
+  const elderTabs = [
+    { path: "/", icon: Heart, label: "Check In" },
+    { path: "/history", icon: Clock, label: "History" },
+    { path: "/settings", icon: Settings, label: "Settings" },
+  ];
+
+  const caregiverTabs = [
+    { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+    { path: "/settings", icon: Settings, label: "Settings" },
+  ];
+
+  const tabs = isElder ? elderTabs : caregiverTabs;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border px-4 pb-6 pt-2 z-50">
@@ -21,9 +32,7 @@ const BottomNav = () => {
               key={tab.path}
               onClick={() => navigate(tab.path)}
               className={`flex flex-col items-center gap-1 px-6 py-2 rounded-xl transition-colors ${
-                isActive
-                  ? "text-primary"
-                  : "text-muted-foreground"
+                isActive ? "text-primary" : "text-muted-foreground"
               }`}
             >
               <tab.icon className="w-7 h-7" strokeWidth={isActive ? 2.5 : 2} />

@@ -14,16 +14,213 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      alerts: {
+        Row: {
+          alert_type: string
+          created_at: string
+          elder_id: string
+          id: string
+          is_read: boolean
+          message: string | null
+        }
+        Insert: {
+          alert_type?: string
+          created_at?: string
+          elder_id: string
+          id?: string
+          is_read?: boolean
+          message?: string | null
+        }
+        Update: {
+          alert_type?: string
+          created_at?: string
+          elder_id?: string
+          id?: string
+          is_read?: boolean
+          message?: string | null
+        }
+        Relationships: []
+      }
+      care_relationships: {
+        Row: {
+          caregiver_id: string
+          created_at: string
+          elder_id: string
+          id: string
+          relationship_type: string
+        }
+        Insert: {
+          caregiver_id: string
+          created_at?: string
+          elder_id: string
+          id?: string
+          relationship_type?: string
+        }
+        Update: {
+          caregiver_id?: string
+          created_at?: string
+          elder_id?: string
+          id?: string
+          relationship_type?: string
+        }
+        Relationships: []
+      }
+      check_in_schedules: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          days_of_week: number[]
+          elder_id: string
+          grace_period_minutes: number
+          id: string
+          is_active: boolean
+          schedule_times: string[]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          days_of_week?: number[]
+          elder_id: string
+          grace_period_minutes?: number
+          id?: string
+          is_active?: boolean
+          schedule_times?: string[]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          days_of_week?: number[]
+          elder_id?: string
+          grace_period_minutes?: number
+          id?: string
+          is_active?: boolean
+          schedule_times?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      check_ins: {
+        Row: {
+          battery_level: number | null
+          checked_in_at: string
+          id: string
+          is_charging: boolean | null
+          last_app_usage_at: string | null
+          user_id: string
+        }
+        Insert: {
+          battery_level?: number | null
+          checked_in_at?: string
+          id?: string
+          is_charging?: boolean | null
+          last_app_usage_at?: string | null
+          user_id: string
+        }
+        Update: {
+          battery_level?: number | null
+          checked_in_at?: string
+          id?: string
+          is_charging?: boolean | null
+          last_app_usage_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      data_preferences: {
+        Row: {
+          daily_reminder: boolean
+          id: string
+          share_app_usage: boolean
+          share_battery: boolean
+          share_location: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          daily_reminder?: boolean
+          id?: string
+          share_app_usage?: boolean
+          share_battery?: boolean
+          share_location?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          daily_reminder?: boolean
+          id?: string
+          share_app_usage?: boolean
+          share_battery?: boolean
+          share_location?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          full_name: string
+          id: string
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "elder" | "family" | "care_staff"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +347,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["elder", "family", "care_staff"],
+    },
   },
 } as const
