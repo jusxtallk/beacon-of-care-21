@@ -1,35 +1,42 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Heart } from "lucide-react";
+import { Heart, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 type AppRole = "elder" | "care_staff";
 
 const AuthPage = () => {
   const [step, setStep] = useState<"role" | "auth">("role");
-  const [selectedRole, setSelectedRole] = useState<AppRole | null>(null);
-  const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [isSignUp, setIsSignUp] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
 
-  const handleRoleSelect = (role: AppRole) => {
-    setSelectedRole(role);
-    if (role === "elder") {
-      // Elders go straight to sign-up (setup wizard handles the rest)
-      setIsSignUp(true);
-      setStep("auth");
-    } else {
-      setStep("auth");
+  const handleElderStart = async () => {
+    setSubmitting(true);
+    try {
+      // Sign in anonymously — no email/password needed for elders
+      const { data, error } = await supabase.auth.signInAnonymously();
+      if (error) throw error;
+
+      if (data.user) {
+        await supabase.from("user_roles").insert({
+          user_id: data.user.id,
+          role: "elder" as const,
+        });
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleCareStaffSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
-
     try {
       if (isSignUp) {
         const { data, error } = await supabase.auth.signUp({
@@ -42,27 +49,23 @@ const AuthPage = () => {
         });
         if (error) throw error;
 
-        if (data.user && selectedRole) {
+        if (data.user) {
           await supabase.from("user_roles").insert({
             user_id: data.user.id,
-            role: selectedRole,
+            role: "care_staff" as const,
           });
         }
 
         toast({
           title: "Check your email",
-          description: "We sent you a confirmation link. Please verify your email to continue.",
+          description: "We sent you a confirmation link.",
         });
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       }
     } catch (err: any) {
-      toast({
-        title: "Error",
-        description: err.message,
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
@@ -77,33 +80,43 @@ const AuthPage = () => {
             <Heart className="w-10 h-10 text-primary-foreground" fill="currentColor" />
           </div>
           <h1 className="text-4xl font-extrabold text-foreground">SafeCheck</h1>
-          <p className="text-muted-foreground mt-2 text-lg">
-            {step === "role" ? "Who are you?" : isSignUp ? "Create your account" : "Welcome back"}
-          </p>
         </div>
 
         {step === "role" ? (
           <div className="space-y-4">
+            <p className="text-center text-muted-foreground text-xl font-semibold mb-6">
+              Who are you?
+            </p>
+
+            {/* Elder — big, friendly, no login */}
             <button
-              onClick={() => handleRoleSelect("elder")}
-              className="w-full rounded-2xl border-3 border-border bg-card p-6 text-left transition-all hover:border-primary hover:shadow-md active:scale-[0.98]"
+              onClick={handleElderStart}
+              disabled={submitting}
+              className="w-full rounded-2xl border-3 border-border bg-card p-8 text-center transition-all hover:border-primary hover:shadow-md active:scale-[0.98] disabled:opacity-50"
             >
-              <p className="text-3xl mb-1">👴</p>
-              <p className="font-extrabold text-card-foreground text-2xl">I'm an Elder</p>
-              <p className="text-muted-foreground text-lg mt-1">I want to check in daily</p>
+              {submitting ? (
+                <Loader2 className="w-10 h-10 animate-spin text-primary mx-auto" />
+              ) : (
+                <>
+                  <p className="text-5xl mb-3">👴</p>
+                  <p className="font-extrabold text-card-foreground text-2xl">I'm an Elder</p>
+                  <p className="text-muted-foreground text-lg mt-1">Tap here to get started</p>
+                </>
+              )}
             </button>
 
+            {/* Care Staff */}
             <button
-              onClick={() => handleRoleSelect("care_staff")}
+              onClick={() => { setStep("auth"); setIsSignUp(true); }}
               className="w-full rounded-2xl border-3 border-border bg-card p-6 text-left transition-all hover:border-primary hover:shadow-md active:scale-[0.98]"
             >
               <p className="text-3xl mb-1">🏥</p>
-              <p className="font-extrabold text-card-foreground text-2xl">Care Staff</p>
-              <p className="text-muted-foreground text-lg mt-1">I manage clients</p>
+              <p className="font-extrabold text-card-foreground text-xl">Care Staff</p>
+              <p className="text-muted-foreground text-base mt-1">I manage clients</p>
             </button>
 
-            <p className="text-center text-muted-foreground mt-6">
-              Already have an account?{" "}
+            <p className="text-center text-muted-foreground mt-6 text-sm">
+              Care staff?{" "}
               <button
                 onClick={() => { setStep("auth"); setIsSignUp(false); }}
                 className="text-primary font-bold underline"
@@ -114,8 +127,11 @@ const AuthPage = () => {
           </div>
         ) : (
           <>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {isSignUp && selectedRole === "care_staff" && (
+            <p className="text-center text-muted-foreground text-lg mb-6 font-semibold">
+              {isSignUp ? "Create Staff Account" : "Staff Sign In"}
+            </p>
+            <form onSubmit={handleCareStaffSubmit} className="space-y-4">
+              {isSignUp && (
                 <div>
                   <label className="block text-sm font-bold text-foreground mb-1">Full Name</label>
                   <input
@@ -129,20 +145,6 @@ const AuthPage = () => {
                 </div>
               )}
 
-              {isSignUp && selectedRole === "elder" && (
-                <div>
-                  <label className="block text-sm font-bold text-foreground mb-1">Your Name</label>
-                  <input
-                    type="text"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    required
-                    className="w-full rounded-2xl border-2 border-border bg-card px-5 py-4 text-xl text-card-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                    placeholder="Enter your name"
-                  />
-                </div>
-              )}
-
               <div>
                 <label className="block text-sm font-bold text-foreground mb-1">Email</label>
                 <input
@@ -150,9 +152,7 @@ const AuthPage = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className={`w-full rounded-xl border border-border bg-card px-4 py-3 text-lg text-card-foreground focus:outline-none focus:ring-2 focus:ring-ring ${
-                    selectedRole === "elder" ? "rounded-2xl border-2 px-5 py-4 text-xl" : ""
-                  }`}
+                  className="w-full rounded-xl border border-border bg-card px-4 py-3 text-lg text-card-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   placeholder="you@example.com"
                 />
               </div>
@@ -165,9 +165,7 @@ const AuthPage = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   minLength={6}
-                  className={`w-full rounded-xl border border-border bg-card px-4 py-3 text-lg text-card-foreground focus:outline-none focus:ring-2 focus:ring-ring ${
-                    selectedRole === "elder" ? "rounded-2xl border-2 px-5 py-4 text-xl" : ""
-                  }`}
+                  className="w-full rounded-xl border border-border bg-card px-4 py-3 text-lg text-card-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   placeholder="••••••••"
                 />
               </div>
@@ -175,9 +173,7 @@ const AuthPage = () => {
               <button
                 type="submit"
                 disabled={submitting}
-                className={`w-full bg-primary text-primary-foreground font-bold text-lg py-4 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 ${
-                  selectedRole === "elder" ? "font-extrabold text-xl py-5 rounded-2xl" : ""
-                }`}
+                className="w-full bg-primary text-primary-foreground font-bold text-lg py-4 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50"
               >
                 {submitting ? "Please wait..." : isSignUp ? "Create Account" : "Sign In"}
               </button>
@@ -185,22 +181,17 @@ const AuthPage = () => {
 
             <p className="text-center text-muted-foreground mt-6">
               {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
-              <button
-                onClick={() => setIsSignUp(!isSignUp)}
-                className="text-primary font-bold underline"
-              >
+              <button onClick={() => setIsSignUp(!isSignUp)} className="text-primary font-bold underline">
                 {isSignUp ? "Sign In" : "Sign Up"}
               </button>
             </p>
 
-            {step === "auth" && (
-              <button
-                onClick={() => { setStep("role"); setSelectedRole(null); }}
-                className="w-full text-center text-muted-foreground mt-2 underline text-sm"
-              >
-                ← Back to role selection
-              </button>
-            )}
+            <button
+              onClick={() => setStep("role")}
+              className="w-full text-center text-muted-foreground mt-2 underline text-sm"
+            >
+              ← Back
+            </button>
           </>
         )}
       </div>
