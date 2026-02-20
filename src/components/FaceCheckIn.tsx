@@ -1,14 +1,24 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Camera } from "lucide-react";
+import { Check, Camera, RefreshCw } from "lucide-react";
 import { useLanguage } from "@/hooks/useLanguage";
+import { supabase } from "@/integrations/supabase/client";
 
 interface FaceCheckInProps {
   onCheckIn: () => void;
   lastCheckIn: Date | null;
 }
 
-const MAX_ATTEMPTS = 2;
+interface FaceDetectResult {
+  face_detected: boolean;
+  face_in_oval: boolean;
+  is_dark: boolean;
+  is_bright: boolean;
+  guidance: string;
+  confidence: number;
+}
+
+const MAX_FAILURES = 2;
 
 const FaceCheckIn = ({ onCheckIn, lastCheckIn }: FaceCheckInProps) => {
   const { t } = useLanguage();
@@ -16,20 +26,20 @@ const FaceCheckIn = ({ onCheckIn, lastCheckIn }: FaceCheckInProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const scanIntervalRef = useRef<number | null>(null);
-  const failedAttemptsRef = useRef(0);
+  const badFrameCountRef = useRef(0);
   const hasDetectedRef = useRef(false);
 
   const [cameraActive, setCameraActive] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [showManual, setShowManual] = useState(false);
   const [justCheckedIn, setJustCheckedIn] = useState(false);
-  const [statusMessage, setStatusMessage] = useState("");
-  const [attemptsLeft, setAttemptsLeft] = useState(MAX_ATTEMPTS);
+  const [guidance, setGuidance] = useState("");
+  const [ovalColor, setOvalColor] = useState<"border-muted-foreground" | "border-success" | "border-destructive">("border-muted-foreground");
+  const [failureCount, setFailureCount] = useState(0);
+  const [analyzing, setAnalyzing] = useState(false);
 
   useEffect(() => {
-    return () => {
-      stopCamera();
-    };
+    return () => { stopCamera(); };
   }, []);
 
   const stopCamera = useCallback(() => {
@@ -44,132 +54,154 @@ const FaceCheckIn = ({ onCheckIn, lastCheckIn }: FaceCheckInProps) => {
     setCameraActive(false);
   }, []);
 
-  const handleSuccessfulDetection = useCallback(() => {
-    if (hasDetectedRef.current) return;
-    hasDetectedRef.current = true;
+  const captureFrame = useCallback((): string | null => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas || video.readyState < 2) return null;
 
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+
+    // Capture at reasonable resolution for AI analysis
+    canvas.width = 320;
+    canvas.height = 400;
+    ctx.drawImage(video, 0, 0, 320, 400);
+
+    return canvas.toDataURL("image/jpeg", 0.7);
+  }, []);
+
+  const analyzeFrame = useCallback(async () => {
+    if (hasDetectedRef.current || analyzing) return;
+
+    const frameData = captureFrame();
+    if (!frameData) return;
+
+    // Quick local check for dark/bright frames
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        let darkPixels = 0;
+        let brightPixels = 0;
+        const total = imgData.data.length / 4;
+        for (let i = 0; i < imgData.data.length; i += 4) {
+          const avg = (imgData.data[i] + imgData.data[i + 1] + imgData.data[i + 2]) / 3;
+          if (avg < 25) darkPixels++;
+          if (avg > 230) brightPixels++;
+        }
+        if (darkPixels / total > 0.8) {
+          badFrameCountRef.current++;
+          setGuidance("Too dark — find better lighting");
+          setOvalColor("border-destructive");
+          if (badFrameCountRef.current >= MAX_FAILURES) {
+            switchToManual();
+          }
+          return;
+        }
+        if (brightPixels / total > 0.8) {
+          badFrameCountRef.current++;
+          setGuidance("Too bright — reduce lighting");
+          setOvalColor("border-destructive");
+          if (badFrameCountRef.current >= MAX_FAILURES) {
+            switchToManual();
+          }
+          return;
+        }
+      }
+    }
+
+    setAnalyzing(true);
+    setScanning(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("face-detect", {
+        body: { image: frameData },
+      });
+
+      if (error || !data) {
+        console.error("Face detect error:", error);
+        setFailureCount((prev) => {
+          const next = prev + 1;
+          if (next >= MAX_FAILURES) switchToManual();
+          return next;
+        });
+        setGuidance("Detection failed — try again");
+        setOvalColor("border-destructive");
+        return;
+      }
+
+      const result = data as FaceDetectResult;
+
+      setGuidance(result.guidance || "");
+
+      if (result.face_detected && result.face_in_oval && result.confidence >= 60) {
+        // Success!
+        hasDetectedRef.current = true;
+        setOvalColor("border-success");
+        setGuidance("Face verified ✓");
+        setScanning(false);
+        setJustCheckedIn(true);
+        onCheckIn();
+
+        setTimeout(() => {
+          stopCamera();
+        }, 500);
+        setTimeout(() => setJustCheckedIn(false), 3000);
+        return;
+      }
+
+      if (result.face_detected && !result.face_in_oval) {
+        // Face found but not centered
+        setOvalColor("border-destructive");
+      } else if (result.face_detected) {
+        // Face found, somewhat in oval but low confidence
+        setOvalColor("border-destructive");
+      } else {
+        // No face
+        setOvalColor("border-destructive");
+        setFailureCount((prev) => {
+          const next = prev + 1;
+          if (next >= MAX_FAILURES) switchToManual();
+          return next;
+        });
+      }
+    } catch (err) {
+      console.error("Analysis error:", err);
+      setFailureCount((prev) => {
+        const next = prev + 1;
+        if (next >= MAX_FAILURES) switchToManual();
+        return next;
+      });
+      setGuidance("Detection error — try again");
+      setOvalColor("border-destructive");
+    } finally {
+      setAnalyzing(false);
+      setScanning(false);
+    }
+  }, [analyzing, captureFrame, onCheckIn, stopCamera]);
+
+  const switchToManual = useCallback(() => {
+    setShowManual(true);
     if (scanIntervalRef.current) {
       clearInterval(scanIntervalRef.current);
       scanIntervalRef.current = null;
     }
-    setStatusMessage(t("face_detected"));
-    setScanning(false);
-    setJustCheckedIn(true);
-    onCheckIn();
-
-    // Stop camera after a brief delay so user sees the success message
-    setTimeout(() => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-        streamRef.current = null;
-      }
-      setCameraActive(false);
-    }, 500);
-
-    setTimeout(() => setJustCheckedIn(false), 3000);
-  }, [onCheckIn, t]);
-
-  const handleFailedAttempt = useCallback(() => {
-    if (hasDetectedRef.current) return;
-    failedAttemptsRef.current += 1;
-    const remaining = MAX_ATTEMPTS - failedAttemptsRef.current;
-    setAttemptsLeft(remaining);
-    setStatusMessage(t("face_not_detected"));
-    setScanning(false);
-
-    if (remaining <= 0) {
-      setShowManual(true);
-      if (scanIntervalRef.current) {
-        clearInterval(scanIntervalRef.current);
-        scanIntervalRef.current = null;
-      }
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-        streamRef.current = null;
-      }
-      setCameraActive(false);
-      setStatusMessage("");
-    }
-  }, [t]);
-
-  const startDetection = useCallback(() => {
-    const hasFaceDetector = "FaceDetector" in window;
-
-    scanIntervalRef.current = window.setInterval(async () => {
-      const video = videoRef.current;
-      if (!video || video.readyState < 2 || hasDetectedRef.current) return;
-
-      setScanning(true);
-      setStatusMessage(t("scanning"));
-
-      if (hasFaceDetector) {
-        try {
-          const detector = new (window as any).FaceDetector({ fastMode: true, maxDetectedFaces: 1 });
-          const faces = await detector.detect(video);
-
-          if (faces.length > 0) {
-            const face = faces[0].boundingBox;
-            const vw = video.videoWidth;
-            const vh = video.videoHeight;
-            const cx = face.x + face.width / 2;
-            const cy = face.y + face.height / 2;
-            const inX = cx > vw * 0.2 && cx < vw * 0.8;
-            const inY = cy > vh * 0.15 && cy < vh * 0.75;
-
-            if (inX && inY) {
-              handleSuccessfulDetection();
-              return;
-            }
-          }
-          handleFailedAttempt();
-        } catch {
-          handleFailedAttempt();
-        }
-      } else {
-        // Fallback: basic pixel analysis
-        const canvas = canvasRef.current;
-        if (!canvas) { setScanning(false); return; }
-        const ctx = canvas.getContext("2d");
-        if (!ctx) { setScanning(false); return; }
-
-        canvas.width = 160;
-        canvas.height = 200;
-        ctx.drawImage(video, 0, 0, 160, 200);
-
-        const centerData = ctx.getImageData(40, 50, 80, 100);
-        let nonBlackPixels = 0;
-        let skinTonePixels = 0;
-        const totalPixels = centerData.data.length / 4;
-
-        for (let i = 0; i < centerData.data.length; i += 4) {
-          const r = centerData.data[i];
-          const g = centerData.data[i + 1];
-          const b = centerData.data[i + 2];
-          if (r > 30 || g > 30 || b > 30) nonBlackPixels++;
-          if (r > 60 && g > 40 && b > 20 && r > g && r > b) skinTonePixels++;
-        }
-
-        const hasContent = nonBlackPixels / totalPixels > 0.4;
-        const hasSkinTone = skinTonePixels / totalPixels > 0.05;
-
-        if (hasContent && hasSkinTone) {
-          handleSuccessfulDetection();
-        } else {
-          handleFailedAttempt();
-        }
-      }
-    }, 4000);
-  }, [t, handleSuccessfulDetection, handleFailedAttempt]);
+    stopCamera();
+    setGuidance("");
+  }, [stopCamera]);
 
   const startCamera = async () => {
     hasDetectedRef.current = false;
-    failedAttemptsRef.current = 0;
-    setAttemptsLeft(MAX_ATTEMPTS);
+    badFrameCountRef.current = 0;
+    setFailureCount(0);
     setShowManual(false);
+    setOvalColor("border-muted-foreground");
+    setGuidance("");
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user", width: { ideal: 480 }, height: { ideal: 640 } },
+        video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 800 } },
       });
       streamRef.current = stream;
 
@@ -177,18 +209,20 @@ const FaceCheckIn = ({ onCheckIn, lastCheckIn }: FaceCheckInProps) => {
       if (!video) return;
 
       video.srcObject = stream;
-
-      // Wait for video metadata to load before playing
       await new Promise<void>((resolve) => {
         video.onloadedmetadata = () => resolve();
       });
       await video.play();
 
       setCameraActive(true);
-      setStatusMessage(t("place_face_in_oval"));
+      setGuidance(t("place_face_in_oval"));
 
-      // Start detection after a brief delay to let user position their face
-      setTimeout(() => startDetection(), 2000);
+      // Start AI detection every 4 seconds
+      setTimeout(() => {
+        scanIntervalRef.current = window.setInterval(() => {
+          analyzeFrame();
+        }, 4000);
+      }, 2000);
     } catch (err) {
       console.error("Camera access denied:", err);
       setShowManual(true);
@@ -201,9 +235,16 @@ const FaceCheckIn = ({ onCheckIn, lastCheckIn }: FaceCheckInProps) => {
     setTimeout(() => {
       setJustCheckedIn(false);
       setShowManual(false);
-      failedAttemptsRef.current = 0;
-      setAttemptsLeft(MAX_ATTEMPTS);
+      setFailureCount(0);
+      badFrameCountRef.current = 0;
     }, 3000);
+  };
+
+  const retryCamera = () => {
+    setShowManual(false);
+    setFailureCount(0);
+    badFrameCountRef.current = 0;
+    startCamera();
   };
 
   const getTimeSince = () => {
@@ -219,6 +260,9 @@ const FaceCheckIn = ({ onCheckIn, lastCheckIn }: FaceCheckInProps) => {
 
   return (
     <div className="flex flex-col items-center gap-6 w-full max-w-sm mx-auto">
+      {/* Hidden canvas for frame capture */}
+      <canvas ref={canvasRef} className="hidden" />
+
       <AnimatePresence mode="wait">
         {justCheckedIn ? (
           <motion.div
@@ -237,10 +281,10 @@ const FaceCheckIn = ({ onCheckIn, lastCheckIn }: FaceCheckInProps) => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="flex flex-col items-center gap-6"
+            className="flex flex-col items-center gap-4"
           >
             <p className="text-muted-foreground text-center text-lg font-semibold">
-              {t("face_not_detected")}
+              Camera check-in unavailable
             </p>
             <motion.button
               onClick={handleManualCheckIn}
@@ -259,6 +303,13 @@ const FaceCheckIn = ({ onCheckIn, lastCheckIn }: FaceCheckInProps) => {
                 {t("manual_checkin")}
               </span>
             </motion.button>
+            <button
+              onClick={retryCamera}
+              className="flex items-center gap-2 text-primary font-bold mt-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Try camera again
+            </button>
           </motion.div>
         ) : cameraActive ? (
           <motion.div
@@ -277,26 +328,35 @@ const FaceCheckIn = ({ onCheckIn, lastCheckIn }: FaceCheckInProps) => {
                 className="w-full h-full object-cover"
                 style={{ transform: "scaleX(-1)" }}
               />
-              {/* Oval overlay */}
+              {/* Oval overlay with dynamic color */}
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div
-                  className="w-48 h-60 rounded-[50%] border-4 border-success"
+                  className={`w-48 h-60 rounded-[50%] border-4 ${ovalColor} transition-colors duration-300`}
                   style={{ boxShadow: "0 0 0 9999px rgba(0,0,0,0.5)" }}
                 />
               </div>
               {scanning && (
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-full text-sm font-bold">
-                  {t("scanning")}
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-full text-sm font-bold animate-pulse">
+                  Analyzing...
                 </div>
               )}
             </div>
-            <p className="text-foreground font-bold mt-4 text-center">{statusMessage}</p>
-            {attemptsLeft > 0 && attemptsLeft < MAX_ATTEMPTS && (
-              <p className="text-muted-foreground text-sm mt-1">
-                {attemptsLeft} {t("attempts_remaining")}
+
+            {/* Guidance text */}
+            <div className="mt-4 text-center min-h-[3rem]">
+              <p className={`font-bold text-lg ${
+                ovalColor === "border-success" ? "text-success" :
+                ovalColor === "border-destructive" ? "text-destructive" :
+                "text-foreground"
+              }`}>
+                {guidance}
               </p>
-            )}
-            <canvas ref={canvasRef} className="hidden" />
+              {failureCount > 0 && failureCount < MAX_FAILURES && (
+                <p className="text-muted-foreground text-sm mt-1">
+                  {MAX_FAILURES - failureCount} attempt{MAX_FAILURES - failureCount !== 1 ? "s" : ""} remaining
+                </p>
+              )}
+            </div>
           </motion.div>
         ) : (
           <motion.div
@@ -306,9 +366,8 @@ const FaceCheckIn = ({ onCheckIn, lastCheckIn }: FaceCheckInProps) => {
             exit={{ scale: 0 }}
             className="flex flex-col items-center gap-6"
           >
-            {/* Keep video ref mounted but hidden so it's available when camera starts */}
+            {/* Hidden video for when camera isn't active yet */}
             <video ref={videoRef} className="hidden" playsInline muted />
-            <canvas ref={canvasRef} className="hidden" />
 
             <motion.button
               onClick={startCamera}
