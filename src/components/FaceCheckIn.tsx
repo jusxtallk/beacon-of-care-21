@@ -8,7 +8,7 @@ interface FaceCheckInProps {
   lastCheckIn: Date | null;
 }
 
-const MAX_ATTEMPTS = 3;
+const MAX_ATTEMPTS = 2;
 
 const FaceCheckIn = ({ onCheckIn, lastCheckIn }: FaceCheckInProps) => {
   const { t } = useLanguage();
@@ -149,8 +149,8 @@ const FaceCheckIn = ({ onCheckIn, lastCheckIn }: FaceCheckInProps) => {
           if (r > 60 && g > 40 && b > 20 && r > g && r > b) skinTonePixels++;
         }
 
-        const hasContent = nonBlackPixels / totalPixels > 0.5;
-        const hasSkinTone = skinTonePixels / totalPixels > 0.1;
+        const hasContent = nonBlackPixels / totalPixels > 0.4;
+        const hasSkinTone = skinTonePixels / totalPixels > 0.05;
 
         if (hasContent && hasSkinTone) {
           handleSuccessfulDetection();
