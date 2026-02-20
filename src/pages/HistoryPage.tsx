@@ -4,6 +4,7 @@ import { Check, Clock } from "lucide-react";
 import { format, isToday, isYesterday } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useLanguage } from "@/hooks/useLanguage";
 
 interface CheckInRow {
   id: string;
@@ -14,6 +15,7 @@ interface CheckInRow {
 
 const HistoryPage = () => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [entries, setEntries] = useState<CheckInRow[]>([]);
 
   useEffect(() => {
@@ -31,8 +33,8 @@ const HistoryPage = () => {
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);
-    if (isToday(d)) return "Today";
-    if (isYesterday(d)) return "Yesterday";
+    if (isToday(d)) return t("today");
+    if (isYesterday(d)) return t("yesterday");
     return format(d, "EEE, MMM d");
   };
 
@@ -46,13 +48,13 @@ const HistoryPage = () => {
   return (
     <div className="min-h-screen bg-background pb-28">
       <div className="px-6 pt-12 max-w-md mx-auto">
-        <h1 className="text-3xl font-extrabold text-foreground mb-6">Check-in History</h1>
+        <h1 className="text-3xl font-extrabold text-foreground mb-6">{t("checkin_history")}</h1>
 
         {entries.length === 0 ? (
           <div className="text-center py-20">
             <Clock className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-            <p className="text-xl text-muted-foreground font-semibold">No check-ins yet</p>
-            <p className="text-muted-foreground mt-1">Tap "I'm OK" to start</p>
+            <p className="text-xl text-muted-foreground font-semibold">{t("no_checkins")}</p>
+            <p className="text-muted-foreground mt-1">{t("tap_to_start")}</p>
           </div>
         ) : (
           <div className="space-y-6">
@@ -69,7 +71,7 @@ const HistoryPage = () => {
                         <Check className="w-5 h-5 text-success" strokeWidth={3} />
                       </div>
                       <div className="flex-1">
-                        <p className="font-bold text-card-foreground">Checked in</p>
+                        <p className="font-bold text-card-foreground">{t("checked_in")}</p>
                         <p className="text-sm text-muted-foreground">
                           {format(new Date(entry.checked_in_at), "h:mm a")}
                         </p>

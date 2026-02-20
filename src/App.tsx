@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { LanguageProvider } from "@/hooks/useLanguage";
 import AuthPage from "./pages/AuthPage";
 import CheckInPage from "./pages/CheckInPage";
 import HistoryPage from "./pages/HistoryPage";
@@ -31,20 +32,17 @@ const ProtectedRoutes = () => {
   const isElder = role === "elder";
 
   return (
-    <Routes>
-      {/* Elder routes */}
-      <Route path="/" element={isElder ? <CheckInPage /> : <Navigate to="/dashboard" />} />
-      <Route path="/history" element={isElder ? <HistoryPage /> : <Navigate to="/dashboard" />} />
-
-      {/* Caregiver routes */}
-      <Route path="/dashboard" element={!isElder ? <DashboardPage /> : <Navigate to="/" />} />
-      <Route path="/elder/:elderId" element={!isElder ? <ElderDetailPage /> : <Navigate to="/" />} />
-      <Route path="/alerts" element={!isElder ? <AlertsPage /> : <Navigate to="/" />} />
-
-      {/* Shared */}
-      <Route path="/settings" element={<SettingsPage />} />
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+    <LanguageProvider>
+      <Routes>
+        <Route path="/" element={isElder ? <CheckInPage /> : <Navigate to="/dashboard" />} />
+        <Route path="/history" element={isElder ? <HistoryPage /> : <Navigate to="/dashboard" />} />
+        <Route path="/dashboard" element={!isElder ? <DashboardPage /> : <Navigate to="/" />} />
+        <Route path="/elder/:elderId" element={!isElder ? <ElderDetailPage /> : <Navigate to="/" />} />
+        <Route path="/alerts" element={!isElder ? <AlertsPage /> : <Navigate to="/" />} />
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </LanguageProvider>
   );
 };
 
