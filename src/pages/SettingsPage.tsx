@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Switch } from "@/components/ui/switch";
 import BottomNav from "@/components/BottomNav";
-import { Battery, Smartphone, MapPin, Bell, Shield, LogOut, Globe, Camera } from "lucide-react";
+import { Battery, Smartphone, MapPin, Bell, Shield, LogOut, Globe, Camera, Copy, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -15,11 +15,13 @@ interface DataPreferences {
 }
 
 const SettingsPage = () => {
-  const { user, profile, signOut } = useAuth();
+  const { user, role, profile, signOut } = useAuth();
   const { t, lang, setLang } = useLanguage();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [linkCode, setLinkCode] = useState<string | null>(null);
+  const [codeCopied, setCodeCopied] = useState(false);
   const [prefs, setPrefs] = useState<DataPreferences>({
     share_battery: false,
     share_app_usage: false,
@@ -40,11 +42,12 @@ const SettingsPage = () => {
 
     supabase
       .from("profiles")
-      .select("avatar_url")
+      .select("avatar_url, link_code")
       .eq("user_id", user.id)
       .maybeSingle()
       .then(({ data }) => {
         if (data?.avatar_url) setAvatarUrl(data.avatar_url);
+        if (data?.link_code) setLinkCode(data.link_code);
       });
   }, [user]);
 
@@ -145,6 +148,37 @@ const SettingsPage = () => {
             </div>
           </div>
         </div>
+
+        {/* Unique Link Code - only for elders */}
+        {role === "elder" && linkCode && (
+          <div className="bg-card rounded-xl p-4 border border-border mb-6">
+            <div className="flex items-center gap-2 mb-2">
+              <Shield className="w-5 h-5 text-primary" />
+              <h2 className="text-lg font-bold text-card-foreground">{t("your_code")}</h2>
+            </div>
+            <p className="text-sm text-muted-foreground mb-3">{t("your_code_desc")}</p>
+            <div className="flex items-center gap-3">
+              <div className="flex-1 bg-background border-2 border-primary/30 rounded-xl px-4 py-3 text-center">
+                <span className="text-2xl font-mono font-extrabold tracking-[0.3em] text-foreground">{linkCode}</span>
+              </div>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(linkCode);
+                  setCodeCopied(true);
+                  setTimeout(() => setCodeCopied(false), 2000);
+                }}
+                className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center"
+              >
+                {codeCopied ? (
+                  <Check className="w-5 h-5 text-primary" />
+                ) : (
+                  <Copy className="w-5 h-5 text-primary" />
+                )}
+              </button>
+            </div>
+            {codeCopied && <p className="text-xs text-primary font-bold mt-2 text-center">{t("copied")}</p>}
+          </div>
+        )}
 
         {/* Language selector */}
         <div className="bg-card rounded-xl p-4 border border-border mb-6">
