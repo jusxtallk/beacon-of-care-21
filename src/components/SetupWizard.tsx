@@ -16,9 +16,8 @@ const GENDERS = [
 ];
 
 const FREQUENCY_OPTIONS = [
-  { value: "1", labels: { en: "Once a day", zh: "每天一次", ms: "Sekali sehari", ta: "ஒரு நாளைக்கு ஒருமுறை" } },
-  { value: "2", labels: { en: "Twice a day", zh: "每天两次", ms: "Dua kali sehari", ta: "ஒரு நாளைக்கு இரண்டு முறை" } },
-  { value: "3", labels: { en: "Three times a day", zh: "每天三次", ms: "Tiga kali sehari", ta: "ஒரு நாளைக்கு மூன்று முறை" } },
+  { value: "daily", labels: { en: "Every day", zh: "每天", ms: "Setiap hari", ta: "ஒவ்வொரு நாளும்" } },
+  { value: "every_2_days", labels: { en: "Every 2 days", zh: "每两天", ms: "Setiap 2 hari", ta: "ஒவ்வொரு 2 நாட்களும்" } },
 ];
 
 const stepTitles: Record<string, Record<string, string>> = {
@@ -57,7 +56,7 @@ const SetupWizard = () => {
   const [gender, setGender] = useState("");
   const [emergencyName, setEmergencyName] = useState("");
   const [emergencyPhone, setEmergencyPhone] = useState("");
-  const [frequency, setFrequency] = useState("1");
+  const [frequency, setFrequency] = useState("daily");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -109,13 +108,13 @@ const SetupWizard = () => {
       .eq("user_id", user.id);
 
     // Create check-in schedule based on frequency
-    const freqNum = parseInt(frequency, 10);
-    const scheduleTimes =
-      freqNum === 1 ? ["09:00"] : freqNum === 2 ? ["09:00", "18:00"] : ["09:00", "14:00", "20:00"];
+    const scheduleTimes = ["09:00"];
+    const daysOfWeek = frequency === "daily" ? [0, 1, 2, 3, 4, 5, 6] : [0, 2, 4, 6];
 
     await supabase.from("check_in_schedules").insert({
       elder_id: user.id,
       schedule_times: scheduleTimes,
+      days_of_week: daysOfWeek,
       created_by: user.id,
     });
 
