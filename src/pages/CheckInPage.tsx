@@ -1,38 +1,59 @@
 import { useState, useEffect } from "react";
 import CheckInButton from "@/components/CheckInButton";
 import BottomNav from "@/components/BottomNav";
-
-const STORAGE_KEY = "checkin-history";
-
-export interface CheckInEntry {
-  id: string;
-  timestamp: string;
-}
-
-export const getCheckIns = (): CheckInEntry[] => {
-  const data = localStorage.getItem(STORAGE_KEY);
-  return data ? JSON.parse(data) : [];
-};
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 const CheckInPage = () => {
+  const { user } = useAuth();
   const [lastCheckIn, setLastCheckIn] = useState<Date | null>(null);
+  const [prefs, setPrefs] = useState<{ share_battery: boolean; share_app_usage: boolean } | null>(null);
 
   useEffect(() => {
-    const entries = getCheckIns();
-    if (entries.length > 0) {
-      setLastCheckIn(new Date(entries[0].timestamp));
-    }
-  }, []);
+    if (!user) return;
 
-  const handleCheckIn = () => {
-    const entry: CheckInEntry = {
-      id: crypto.randomUUID(),
-      timestamp: new Date().toISOString(),
+    const fetchLast = async () => {
+      const { data } = await supabase
+        .from("check_ins")
+        .select("checked_in_at")
+        .eq("user_id", user.id)
+        .order("checked_in_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (data) setLastCheckIn(new Date(data.checked_in_at));
     };
-    const existing = getCheckIns();
-    const updated = [entry, ...existing].slice(0, 100);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    setLastCheckIn(new Date(entry.timestamp));
+
+    const fetchPrefs = async () => {
+      const { data } = await supabase
+        .from("data_preferences")
+        .select("share_battery, share_app_usage")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (data) setPrefs(data);
+    };
+
+    fetchLast();
+    fetchPrefs();
+  }, [user]);
+
+  const handleCheckIn = async () => {
+    if (!user) return;
+
+    const insertData: any = { user_id: user.id };
+
+    // Collect battery info if user consented
+    if (prefs?.share_battery && "getBattery" in navigator) {
+      try {
+        const battery = await (navigator as any).getBattery();
+        insertData.battery_level = Math.round(battery.level * 100);
+        insertData.is_charging = battery.charging;
+      } catch {}
+    }
+
+    const { error } = await supabase.from("check_ins").insert(insertData);
+    if (!error) {
+      setLastCheckIn(new Date());
+    }
   };
 
   const getGreeting = () => {

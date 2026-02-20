@@ -1,15 +1,33 @@
 import { useEffect, useState } from "react";
-import { getCheckIns, type CheckInEntry } from "./CheckInPage";
 import BottomNav from "@/components/BottomNav";
 import { Check, Clock } from "lucide-react";
 import { format, isToday, isYesterday } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+
+interface CheckInRow {
+  id: string;
+  checked_in_at: string;
+  battery_level: number | null;
+  is_charging: boolean | null;
+}
 
 const HistoryPage = () => {
-  const [entries, setEntries] = useState<CheckInEntry[]>([]);
+  const { user } = useAuth();
+  const [entries, setEntries] = useState<CheckInRow[]>([]);
 
   useEffect(() => {
-    setEntries(getCheckIns());
-  }, []);
+    if (!user) return;
+    supabase
+      .from("check_ins")
+      .select("id, checked_in_at, battery_level, is_charging")
+      .eq("user_id", user.id)
+      .order("checked_in_at", { ascending: false })
+      .limit(100)
+      .then(({ data }) => {
+        if (data) setEntries(data);
+      });
+  }, [user]);
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);
@@ -18,8 +36,8 @@ const HistoryPage = () => {
     return format(d, "EEE, MMM d");
   };
 
-  const groupedByDay = entries.reduce<Record<string, CheckInEntry[]>>((acc, entry) => {
-    const key = formatDate(entry.timestamp);
+  const groupedByDay = entries.reduce<Record<string, CheckInRow[]>>((acc, entry) => {
+    const key = formatDate(entry.checked_in_at);
     if (!acc[key]) acc[key] = [];
     acc[key].push(entry);
     return acc;
@@ -28,9 +46,7 @@ const HistoryPage = () => {
   return (
     <div className="min-h-screen bg-background pb-28">
       <div className="px-6 pt-12 max-w-md mx-auto">
-        <h1 className="text-3xl font-extrabold text-foreground mb-6">
-          Check-in History
-        </h1>
+        <h1 className="text-3xl font-extrabold text-foreground mb-6">Check-in History</h1>
 
         {entries.length === 0 ? (
           <div className="text-center py-20">
@@ -52,12 +68,17 @@ const HistoryPage = () => {
                       <div className="w-10 h-10 rounded-full bg-success/15 flex items-center justify-center">
                         <Check className="w-5 h-5 text-success" strokeWidth={3} />
                       </div>
-                      <div>
+                      <div className="flex-1">
                         <p className="font-bold text-card-foreground">Checked in</p>
                         <p className="text-sm text-muted-foreground">
-                          {format(new Date(entry.timestamp), "h:mm a")}
+                          {format(new Date(entry.checked_in_at), "h:mm a")}
                         </p>
                       </div>
+                      {entry.battery_level !== null && (
+                        <span className="text-sm text-muted-foreground">
+                          🔋 {entry.battery_level}%
+                        </span>
+                      )}
                     </div>
                   ))}
                 </div>
