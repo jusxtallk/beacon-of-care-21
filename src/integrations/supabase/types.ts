@@ -158,31 +158,109 @@ export type Database = {
         }
         Relationships: []
       }
+      elder_notes: {
+        Row: {
+          author_id: string | null
+          content: string
+          created_at: string
+          elder_id: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          author_id?: string | null
+          content: string
+          created_at?: string
+          elder_id: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string | null
+          content?: string
+          created_at?: string
+          elder_id?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      health_conditions: {
+        Row: {
+          condition_name: string
+          created_at: string
+          diagnosed_date: string | null
+          elder_id: string
+          id: string
+          notes: string | null
+          severity: string | null
+          updated_at: string
+        }
+        Insert: {
+          condition_name: string
+          created_at?: string
+          diagnosed_date?: string | null
+          elder_id: string
+          id?: string
+          notes?: string | null
+          severity?: string | null
+          updated_at?: string
+        }
+        Update: {
+          condition_name?: string
+          created_at?: string
+          diagnosed_date?: string | null
+          elder_id?: string
+          id?: string
+          notes?: string | null
+          severity?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
+          address: string | null
           avatar_url: string | null
           created_at: string
+          date_of_birth: string | null
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
           full_name: string
           id: string
+          nric_last4: string | null
           phone: string | null
+          preferred_language: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          address?: string | null
           avatar_url?: string | null
           created_at?: string
+          date_of_birth?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
           full_name?: string
           id?: string
+          nric_last4?: string | null
           phone?: string | null
+          preferred_language?: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          address?: string | null
           avatar_url?: string | null
           created_at?: string
+          date_of_birth?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
           full_name?: string
           id?: string
+          nric_last4?: string | null
           phone?: string | null
+          preferred_language?: string
           updated_at?: string
           user_id?: string
         }

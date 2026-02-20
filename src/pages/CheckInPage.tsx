@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
-import CheckInButton from "@/components/CheckInButton";
+import FaceCheckIn from "@/components/FaceCheckIn";
 import BottomNav from "@/components/BottomNav";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useLanguage } from "@/hooks/useLanguage";
 
 const CheckInPage = () => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [lastCheckIn, setLastCheckIn] = useState<Date | null>(null);
   const [prefs, setPrefs] = useState<{ share_battery: boolean; share_app_usage: boolean } | null>(null);
 
@@ -41,7 +43,6 @@ const CheckInPage = () => {
 
     const insertData: any = { user_id: user.id };
 
-    // Collect battery info if user consented
     if (prefs?.share_battery && "getBattery" in navigator) {
       try {
         const battery = await (navigator as any).getBattery();
@@ -58,9 +59,9 @@ const CheckInPage = () => {
 
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return "Good Morning ☀️";
-    if (hour < 18) return "Good Afternoon 🌤";
-    return "Good Evening 🌙";
+    if (hour < 12) return t("good_morning");
+    if (hour < 18) return t("good_afternoon");
+    return t("good_evening");
   };
 
   return (
@@ -70,9 +71,9 @@ const CheckInPage = () => {
           {getGreeting()}
         </h1>
         <p className="text-lg text-muted-foreground mb-12 text-center">
-          Tap the button to let everyone know you're doing well
+          {t("checkin_prompt")}
         </p>
-        <CheckInButton onCheckIn={handleCheckIn} lastCheckIn={lastCheckIn} />
+        <FaceCheckIn onCheckIn={handleCheckIn} lastCheckIn={lastCheckIn} />
       </div>
       <BottomNav />
     </div>

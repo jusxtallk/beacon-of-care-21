@@ -1,18 +1,20 @@
 import { Heart, Clock, Settings, LayoutDashboard } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useLanguage } from "@/hooks/useLanguage";
 
 const BottomNav = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { role } = useAuth();
+  const { t } = useLanguage();
 
   const isElder = role === "elder";
 
   const elderTabs = [
-    { path: "/", icon: Heart, label: "Check In" },
-    { path: "/history", icon: Clock, label: "History" },
-    { path: "/settings", icon: Settings, label: "Settings" },
+    { path: "/", icon: Heart, label: t("checkin") },
+    { path: "/history", icon: Clock, label: t("history") },
+    { path: "/settings", icon: Settings, label: t("settings") },
   ];
 
   const caregiverTabs = [

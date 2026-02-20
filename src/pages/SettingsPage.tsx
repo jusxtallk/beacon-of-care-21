@@ -1,9 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Switch } from "@/components/ui/switch";
 import BottomNav from "@/components/BottomNav";
-import { Battery, Smartphone, MapPin, Bell, Shield, LogOut } from "lucide-react";
+import { Battery, Smartphone, MapPin, Bell, Shield, LogOut, Globe, Camera } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useLanguage } from "@/hooks/useLanguage";
+import { LANGUAGES, type Language } from "@/lib/i18n";
 
 interface DataPreferences {
   share_battery: boolean;
@@ -14,6 +16,10 @@ interface DataPreferences {
 
 const SettingsPage = () => {
   const { user, profile, signOut } = useAuth();
+  const { t, lang, setLang } = useLanguage();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [prefs, setPrefs] = useState<DataPreferences>({
     share_battery: false,
     share_app_usage: false,
@@ -31,6 +37,15 @@ const SettingsPage = () => {
       .then(({ data }) => {
         if (data) setPrefs(data);
       });
+
+    supabase
+      .from("profiles")
+      .select("avatar_url")
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.avatar_url) setAvatarUrl(data.avatar_url);
+      });
   }, [user]);
 
   const toggle = async (key: keyof DataPreferences) => {
@@ -44,21 +59,47 @@ const SettingsPage = () => {
     }
   };
 
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    setUploading(true);
+    const ext = file.name.split(".").pop();
+    const path = `${user.id}/avatar.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("avatars")
+      .upload(path, file, { upsert: true });
+
+    if (!uploadError) {
+      const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
+      const publicUrl = urlData.publicUrl;
+
+      await supabase
+        .from("profiles")
+        .update({ avatar_url: publicUrl })
+        .eq("user_id", user.id);
+
+      setAvatarUrl(publicUrl + "?t=" + Date.now());
+    }
+    setUploading(false);
+  };
+
   const settingsGroups = [
     {
-      title: "Data Sharing",
-      description: "Choose what information to share with your care team",
+      title: t("data_sharing"),
+      description: t("data_sharing_desc"),
       items: [
-        { key: "share_battery" as const, icon: Battery, label: "Battery Level", description: "Share your phone's battery status" },
-        { key: "share_app_usage" as const, icon: Smartphone, label: "App Usage", description: "Share when you last used your phone" },
-        { key: "share_location" as const, icon: MapPin, label: "Location", description: "Share your approximate location" },
+        { key: "share_battery" as const, icon: Battery, label: t("battery_level"), description: t("battery_desc") },
+        { key: "share_app_usage" as const, icon: Smartphone, label: t("app_usage"), description: t("app_usage_desc") },
+        { key: "share_location" as const, icon: MapPin, label: t("location"), description: t("location_desc") },
       ],
     },
     {
-      title: "Notifications",
-      description: "Manage your reminders",
+      title: t("notifications"),
+      description: t("notifications_desc"),
       items: [
-        { key: "daily_reminder" as const, icon: Bell, label: "Daily Reminder", description: "Get a daily reminder to check in" },
+        { key: "daily_reminder" as const, icon: Bell, label: t("daily_reminder"), description: t("daily_reminder_desc") },
       ],
     },
   ];
@@ -66,15 +107,69 @@ const SettingsPage = () => {
   return (
     <div className="min-h-screen bg-background pb-28">
       <div className="px-6 pt-12 max-w-md mx-auto">
-        <h1 className="text-3xl font-extrabold text-foreground mb-2">Settings</h1>
-        <p className="text-muted-foreground mb-8">Control your privacy and preferences</p>
+        <h1 className="text-3xl font-extrabold text-foreground mb-2">{t("settings")}</h1>
+        <p className="text-muted-foreground mb-8">{t("control_privacy")}</p>
 
-        {profile && (
-          <div className="bg-card rounded-xl p-4 border border-border mb-6">
-            <p className="font-bold text-card-foreground text-lg">{profile.full_name || "User"}</p>
-            <p className="text-sm text-muted-foreground">{user?.email}</p>
+        {/* Profile section with avatar */}
+        <div className="bg-card rounded-xl p-4 border border-border mb-6">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="relative w-16 h-16 rounded-full bg-muted flex items-center justify-center overflow-hidden border-2 border-border"
+            >
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                <Camera className="w-6 h-6 text-muted-foreground" />
+              )}
+              {uploading && (
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                  <span className="text-white text-xs">...</span>
+                </div>
+              )}
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="user"
+              className="hidden"
+              onChange={handleAvatarUpload}
+            />
+            <div>
+              <p className="font-bold text-card-foreground text-lg">{profile?.full_name || "User"}</p>
+              <p className="text-sm text-muted-foreground">{user?.email}</p>
+              {!avatarUrl && (
+                <p className="text-xs text-destructive font-semibold mt-1">{t("photo_required")}</p>
+              )}
+            </div>
           </div>
-        )}
+        </div>
+
+        {/* Language selector */}
+        <div className="bg-card rounded-xl p-4 border border-border mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Globe className="w-5 h-5 text-primary" />
+            <h2 className="text-lg font-bold text-card-foreground">{t("language")}</h2>
+          </div>
+          <p className="text-sm text-muted-foreground mb-3">{t("language_desc")}</p>
+          <div className="grid grid-cols-2 gap-2">
+            {LANGUAGES.map((l) => (
+              <button
+                key={l.code}
+                onClick={() => setLang(l.code)}
+                className={`rounded-xl border-2 p-3 text-left transition-colors ${
+                  lang === l.code
+                    ? "border-primary bg-primary/10"
+                    : "border-border bg-background"
+                }`}
+              >
+                <p className="font-bold text-card-foreground text-sm">{l.nativeLabel}</p>
+                <p className="text-xs text-muted-foreground">{l.label}</p>
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div className="space-y-8">
           {settingsGroups.map((group) => (
@@ -108,10 +203,8 @@ const SettingsPage = () => {
         </div>
 
         <div className="mt-10 bg-card rounded-xl p-5 border border-border">
-          <h3 className="font-bold text-card-foreground mb-1">Your Privacy Matters</h3>
-          <p className="text-sm text-muted-foreground">
-            All shared data is only visible to your designated care team. You can change these settings at any time.
-          </p>
+          <h3 className="font-bold text-card-foreground mb-1">{t("privacy_title")}</h3>
+          <p className="text-sm text-muted-foreground">{t("privacy_desc")}</p>
         </div>
 
         <button
@@ -119,7 +212,7 @@ const SettingsPage = () => {
           className="mt-6 w-full flex items-center justify-center gap-2 bg-destructive text-destructive-foreground font-bold py-3 rounded-xl"
         >
           <LogOut className="w-5 h-5" />
-          Sign Out
+          {t("sign_out")}
         </button>
       </div>
       <BottomNav />
