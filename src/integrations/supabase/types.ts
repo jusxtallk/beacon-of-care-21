@@ -229,6 +229,7 @@ export type Database = {
           full_name: string
           gender: string | null
           id: string
+          link_code: string | null
           nric_last4: string | null
           phone: string | null
           preferred_language: string
@@ -246,6 +247,7 @@ export type Database = {
           full_name?: string
           gender?: string | null
           id?: string
+          link_code?: string | null
           nric_last4?: string | null
           phone?: string | null
           preferred_language?: string
@@ -263,6 +265,7 @@ export type Database = {
           full_name?: string
           gender?: string | null
           id?: string
+          link_code?: string | null
           nric_last4?: string | null
           phone?: string | null
           preferred_language?: string
@@ -301,6 +304,13 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      lookup_elder_by_code: {
+        Args: { _code: string }
+        Returns: {
+          full_name: string
+          user_id: string
+        }[]
       }
     }
     Enums: {

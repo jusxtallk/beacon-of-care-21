@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import BottomNav from "@/components/BottomNav";
-import { AlertTriangle, Check, Clock, Users, Bell, ChevronRight } from "lucide-react";
+import { AlertTriangle, Check, Clock, Users, Bell, ChevronRight, Plus, X, Search } from "lucide-react";
 import { format, differenceInHours, differenceInMinutes } from "date-fns";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 interface ElderStatus {
   elder_id: string;
@@ -21,6 +22,13 @@ const DashboardPage = () => {
   const [elders, setElders] = useState<ElderStatus[]>([]);
   const [unreadAlerts, setUnreadAlerts] = useState(0);
   const [loading, setLoading] = useState(true);
+
+  // Add elder dialog state
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [linkCodeInput, setLinkCodeInput] = useState("");
+  const [lookupResult, setLookupResult] = useState<{ user_id: string; full_name: string } | null>(null);
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [addingElder, setAddingElder] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -44,7 +52,6 @@ const DashboardPage = () => {
   const fetchElders = async () => {
     if (!user) return;
 
-    // Get all elders this caregiver monitors
     const { data: rels } = await supabase
       .from("care_relationships")
       .select("elder_id")
@@ -58,13 +65,11 @@ const DashboardPage = () => {
 
     const elderIds = rels.map((r) => r.elder_id);
 
-    // Get profiles
     const { data: profiles } = await supabase
       .from("profiles")
       .select("user_id, full_name")
       .in("user_id", elderIds);
 
-    // Get latest check-in for each elder
     const elderStatuses: ElderStatus[] = [];
 
     for (const elderId of elderIds) {
@@ -96,7 +101,6 @@ const DashboardPage = () => {
       });
     }
 
-    // Sort: alerts first, then warning, then ok
     elderStatuses.sort((a, b) => {
       const order = { alert: 0, warning: 1, ok: 2 };
       return order[a.status] - order[b.status];
@@ -113,6 +117,58 @@ const DashboardPage = () => {
       .select("id", { count: "exact", head: true })
       .eq("is_read", false);
     setUnreadAlerts(count || 0);
+  };
+
+  const lookupElder = async () => {
+    const code = linkCodeInput.trim().toUpperCase();
+    if (code.length !== 6) return;
+    setLookupLoading(true);
+    setLookupResult(null);
+
+    const { data, error } = await supabase.rpc("lookup_elder_by_code", { _code: code });
+
+    if (error || !data || data.length === 0) {
+      toast.error("No elder found with this code");
+      setLookupResult(null);
+    } else {
+      setLookupResult(data[0]);
+    }
+    setLookupLoading(false);
+  };
+
+  const addElder = async () => {
+    if (!user || !lookupResult) return;
+    setAddingElder(true);
+
+    // Check if relationship already exists
+    const { data: existing } = await supabase
+      .from("care_relationships")
+      .select("id")
+      .eq("caregiver_id", user.id)
+      .eq("elder_id", lookupResult.user_id)
+      .maybeSingle();
+
+    if (existing) {
+      toast.error("This elder is already linked to your account");
+      setAddingElder(false);
+      return;
+    }
+
+    const { error } = await supabase.from("care_relationships").insert({
+      caregiver_id: user.id,
+      elder_id: lookupResult.user_id,
+    });
+
+    if (error) {
+      toast.error("Failed to add elder. Make sure you have permission.");
+    } else {
+      toast.success(`${lookupResult.full_name} has been added!`);
+      setShowAddDialog(false);
+      setLinkCodeInput("");
+      setLookupResult(null);
+      fetchElders();
+    }
+    setAddingElder(false);
   };
 
   const getTimeSince = (dateStr: string | null) => {
@@ -141,18 +197,83 @@ const DashboardPage = () => {
             <h1 className="text-3xl font-extrabold text-foreground">Dashboard</h1>
             <p className="text-muted-foreground">Monitoring {elders.length} user{elders.length !== 1 ? "s" : ""}</p>
           </div>
-          <button
-            onClick={() => navigate("/alerts")}
-            className="relative w-12 h-12 rounded-full bg-card border border-border flex items-center justify-center"
-          >
-            <Bell className="w-6 h-6 text-foreground" />
-            {unreadAlerts > 0 && (
-              <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-xs font-bold flex items-center justify-center">
-                {unreadAlerts}
-              </span>
-            )}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowAddDialog(true)}
+              className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center"
+            >
+              <Plus className="w-6 h-6" />
+            </button>
+            <button
+              onClick={() => navigate("/alerts")}
+              className="relative w-12 h-12 rounded-full bg-card border border-border flex items-center justify-center"
+            >
+              <Bell className="w-6 h-6 text-foreground" />
+              {unreadAlerts > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-xs font-bold flex items-center justify-center">
+                  {unreadAlerts}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
+
+        {/* Add Elder Dialog */}
+        {showAddDialog && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-6">
+            <div className="bg-card rounded-2xl p-6 w-full max-w-sm border border-border">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-extrabold text-card-foreground">Add Elder</h2>
+                <button onClick={() => { setShowAddDialog(false); setLinkCodeInput(""); setLookupResult(null); }}>
+                  <X className="w-6 h-6 text-muted-foreground" />
+                </button>
+              </div>
+              <p className="text-sm text-muted-foreground mb-4">
+                Enter the 6-character code from the elder's settings page
+              </p>
+              <div className="flex gap-2 mb-4">
+                <input
+                  value={linkCodeInput}
+                  onChange={(e) => {
+                    setLinkCodeInput(e.target.value.toUpperCase().slice(0, 6));
+                    setLookupResult(null);
+                  }}
+                  placeholder="ABC123"
+                  maxLength={6}
+                  className="flex-1 rounded-xl border border-border bg-background px-4 py-3 text-center text-xl font-mono font-bold tracking-[0.3em] text-foreground uppercase"
+                />
+                <button
+                  onClick={lookupElder}
+                  disabled={linkCodeInput.length !== 6 || lookupLoading}
+                  className="w-12 h-12 rounded-xl bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-50"
+                >
+                  <Search className="w-5 h-5" />
+                </button>
+              </div>
+
+              {lookupLoading && (
+                <p className="text-sm text-muted-foreground text-center">Looking up...</p>
+              )}
+
+              {lookupResult && (
+                <div className="bg-success/10 border border-success/30 rounded-xl p-4 mb-4">
+                  <p className="text-sm text-muted-foreground">Found elder:</p>
+                  <p className="text-lg font-bold text-card-foreground">{lookupResult.full_name}</p>
+                </div>
+              )}
+
+              {lookupResult && (
+                <button
+                  onClick={addElder}
+                  disabled={addingElder}
+                  className="w-full bg-primary text-primary-foreground font-bold py-3 rounded-xl disabled:opacity-50"
+                >
+                  {addingElder ? "Adding..." : `Add ${lookupResult.full_name}`}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {loading ? (
           <div className="text-center py-20">
@@ -162,7 +283,7 @@ const DashboardPage = () => {
           <div className="text-center py-20">
             <Users className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
             <p className="text-xl text-muted-foreground font-semibold">No users assigned</p>
-            <p className="text-muted-foreground mt-1">Ask an administrator to assign elderly users to your account</p>
+            <p className="text-muted-foreground mt-1">Tap + to add an elder using their code</p>
           </div>
         ) : (
           <div className="space-y-3">

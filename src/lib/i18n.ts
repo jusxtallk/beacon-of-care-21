@@ -64,7 +64,10 @@ type TranslationKey =
   | "save"
   | "cancel"
   | "today"
-  | "yesterday";
+  | "yesterday"
+  | "your_code"
+  | "your_code_desc"
+  | "copied";
 
 type Translations = Record<TranslationKey, string>;
 
@@ -121,6 +124,9 @@ const translations: Record<Language, Translations> = {
     cancel: "Cancel",
     today: "Today",
     yesterday: "Yesterday",
+    your_code: "Your Code",
+    your_code_desc: "Share this code with your caregiver to link your account",
+    copied: "Copied!",
   },
   zh: {
     app_name: "安全签到",
@@ -174,6 +180,9 @@ const translations: Record<Language, Translations> = {
     cancel: "取消",
     today: "今天",
     yesterday: "昨天",
+    your_code: "您的代码",
+    your_code_desc: "将此代码分享给您的护理人员以关联您的账户",
+    copied: "已复制！",
   },
   ms: {
     app_name: "SafeCheck",
@@ -227,6 +236,9 @@ const translations: Record<Language, Translations> = {
     cancel: "Batal",
     today: "Hari Ini",
     yesterday: "Semalam",
+    your_code: "Kod Anda",
+    your_code_desc: "Kongsi kod ini dengan penjaga anda untuk menghubungkan akaun anda",
+    copied: "Disalin!",
   },
   ta: {
     app_name: "பாதுகாப்பு சோதனை",
@@ -280,6 +292,9 @@ const translations: Record<Language, Translations> = {
     cancel: "ரத்து",
     today: "இன்று",
     yesterday: "நேற்று",
+    your_code: "உங்கள் குறியீடு",
+    your_code_desc: "உங்கள் கணக்கை இணைக்க இந்த குறியீட்டை உங்கள் பராமரிப்பாளருடன் பகிரவும்",
+    copied: "நகலெடுக்கப்பட்டது!",
   },
 };
 
