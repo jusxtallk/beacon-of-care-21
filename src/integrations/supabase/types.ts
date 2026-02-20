@@ -227,6 +227,7 @@ export type Database = {
           emergency_contact_name: string | null
           emergency_contact_phone: string | null
           full_name: string
+          gender: string | null
           id: string
           nric_last4: string | null
           phone: string | null
@@ -243,6 +244,7 @@ export type Database = {
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
           full_name?: string
+          gender?: string | null
           id?: string
           nric_last4?: string | null
           phone?: string | null
@@ -259,6 +261,7 @@ export type Database = {
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
           full_name?: string
+          gender?: string | null
           id?: string
           nric_last4?: string | null
           phone?: string | null
