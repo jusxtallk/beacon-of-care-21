@@ -13,7 +13,7 @@ interface ElderStatus {
   last_check_in: string | null;
   battery_level: number | null;
   is_charging: boolean | null;
-  status: "ok" | "warning" | "alert";
+  status: "ok" | "warning" | "alert" | "high_priority";
 }
 
 const DashboardPage = () => {
@@ -22,6 +22,7 @@ const DashboardPage = () => {
   const [elders, setElders] = useState<ElderStatus[]>([]);
   const [unreadAlerts, setUnreadAlerts] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [highPriorityCount, setHighPriorityCount] = useState(0);
 
   // Add elder dialog state
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -83,12 +84,14 @@ const DashboardPage = () => {
 
       const profile = profiles?.find((p) => p.user_id === elderId);
       const now = new Date();
-      let status: "ok" | "warning" | "alert" = "alert";
+      let status: "ok" | "warning" | "alert" | "high_priority" = "high_priority";
 
       if (lastCheckIn) {
         const hoursSince = differenceInHours(now, new Date(lastCheckIn.checked_in_at));
         if (hoursSince < 12) status = "ok";
         else if (hoursSince < 24) status = "warning";
+        else if (hoursSince < 48) status = "alert";
+        // 48+ hours stays "high_priority"
       }
 
       elderStatuses.push({
@@ -102,11 +105,12 @@ const DashboardPage = () => {
     }
 
     elderStatuses.sort((a, b) => {
-      const order = { alert: 0, warning: 1, ok: 2 };
+      const order = { high_priority: 0, alert: 1, warning: 2, ok: 3 };
       return order[a.status] - order[b.status];
     });
 
     setElders(elderStatuses);
+    setHighPriorityCount(elderStatuses.filter(e => e.status === "high_priority").length);
     setLoading(false);
   };
 
@@ -184,9 +188,10 @@ const DashboardPage = () => {
   };
 
   const statusConfig = {
-    ok: { bg: "bg-success/15", text: "text-success", icon: Check, label: "OK" },
-    warning: { bg: "bg-warning/15", text: "text-warning", icon: Clock, label: "Overdue" },
-    alert: { bg: "bg-destructive/15", text: "text-destructive", icon: AlertTriangle, label: "Missed" },
+    ok: { bg: "bg-success/15", text: "text-success", icon: Check, label: "OK", border: "border-border" },
+    warning: { bg: "bg-warning/15", text: "text-warning", icon: Clock, label: "Overdue", border: "border-border" },
+    alert: { bg: "bg-destructive/15", text: "text-destructive", icon: AlertTriangle, label: "Missed", border: "border-border" },
+    high_priority: { bg: "bg-destructive/25", text: "text-destructive", icon: AlertTriangle, label: "HIGH PRIORITY", border: "border-destructive" },
   };
 
   return (
@@ -294,7 +299,7 @@ const DashboardPage = () => {
                 <button
                   key={elder.elder_id}
                   onClick={() => navigate(`/elder/${elder.elder_id}`)}
-                  className="w-full flex items-center gap-4 bg-card rounded-xl p-4 border border-border text-left"
+                  className={`w-full flex items-center gap-4 bg-card rounded-xl p-4 border-2 ${config.border} text-left ${elder.status === "high_priority" ? "animate-pulse" : ""}`}
                 >
                   <div className={`w-12 h-12 rounded-full ${config.bg} flex items-center justify-center`}>
                     <StatusIcon className={`w-6 h-6 ${config.text}`} strokeWidth={2.5} />

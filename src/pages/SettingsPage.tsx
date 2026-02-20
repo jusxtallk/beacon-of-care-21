@@ -205,6 +205,7 @@ const SettingsPage = () => {
           </div>
         </div>
 
+        {role === "elder" && (
         <div className="space-y-8">
           {settingsGroups.map((group) => (
             <div key={group.title}>
@@ -235,6 +236,7 @@ const SettingsPage = () => {
             </div>
           ))}
         </div>
+        )}
 
         <div className="mt-10 bg-card rounded-xl p-5 border border-border">
           <h3 className="font-bold text-card-foreground mb-1">{t("privacy_title")}</h3>
