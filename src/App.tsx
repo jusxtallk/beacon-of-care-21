@@ -12,12 +12,13 @@ import SettingsPage from "./pages/SettingsPage";
 import DashboardPage from "./pages/DashboardPage";
 import ElderDetailPage from "./pages/ElderDetailPage";
 import AlertsPage from "./pages/AlertsPage";
+import SetupWizard from "./components/SetupWizard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
 const ProtectedRoutes = () => {
-  const { user, role, loading } = useAuth();
+  const { user, role, loading, setupCompleted } = useAuth();
 
   if (loading) {
     return (
@@ -31,15 +32,28 @@ const ProtectedRoutes = () => {
 
   const isElder = role === "elder";
 
+  // Elders who haven't completed setup see the wizard
+  if (isElder && !setupCompleted) {
+    return (
+      <LanguageProvider>
+        <SetupWizard />
+      </LanguageProvider>
+    );
+  }
+
   return (
     <LanguageProvider>
       <Routes>
+        {/* Elder routes — simplified, check-in is the whole app */}
         <Route path="/" element={isElder ? <CheckInPage /> : <Navigate to="/dashboard" />} />
         <Route path="/history" element={isElder ? <HistoryPage /> : <Navigate to="/dashboard" />} />
+        <Route path="/settings" element={<SettingsPage />} />
+
+        {/* Caregiver routes */}
         <Route path="/dashboard" element={!isElder ? <DashboardPage /> : <Navigate to="/" />} />
         <Route path="/elder/:elderId" element={!isElder ? <ElderDetailPage /> : <Navigate to="/" />} />
         <Route path="/alerts" element={!isElder ? <AlertsPage /> : <Navigate to="/" />} />
-        <Route path="/settings" element={<SettingsPage />} />
+
         <Route path="*" element={<NotFound />} />
       </Routes>
     </LanguageProvider>
