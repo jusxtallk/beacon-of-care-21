@@ -231,6 +231,7 @@ export type Database = {
           nric_last4: string | null
           phone: string | null
           preferred_language: string
+          setup_completed: boolean
           updated_at: string
           user_id: string
         }
@@ -246,6 +247,7 @@ export type Database = {
           nric_last4?: string | null
           phone?: string | null
           preferred_language?: string
+          setup_completed?: boolean
           updated_at?: string
           user_id: string
         }
@@ -261,6 +263,7 @@ export type Database = {
           nric_last4?: string | null
           phone?: string | null
           preferred_language?: string
+          setup_completed?: boolean
           updated_at?: string
           user_id?: string
         }
