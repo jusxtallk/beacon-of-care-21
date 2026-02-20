@@ -4,7 +4,7 @@ import BottomNav from "@/components/BottomNav";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/hooks/useLanguage";
-import { useCheckInLockdown } from "@/hooks/useCheckInLockdown";
+import { useCheckInLockdown, vibrateSuccess } from "@/hooks/useCheckInLockdown";
 
 const CheckInPage = () => {
   const { user } = useAuth();
@@ -73,10 +73,7 @@ const CheckInPage = () => {
     if (!error) {
       setLastCheckIn(new Date());
       setCheckInDue(false);
-      // Success vibration
-      if ("vibrate" in navigator) {
-        navigator.vibrate([100, 50, 100]);
-      }
+      vibrateSuccess();
     }
   };
 
