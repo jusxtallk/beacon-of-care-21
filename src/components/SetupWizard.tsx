@@ -123,7 +123,7 @@ const SetupWizard = () => {
   };
 
   const canProceedProfile = fullName.trim().length > 0 && yearOfBirth.length === 4 && gender;
-  const canProceedEmergency = emergencyName.trim().length > 0 && emergencyPhone.trim().length > 0;
+  const canProceedEmergency = true;
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 60 }, (_, i) => String(currentYear - 50 - i));
