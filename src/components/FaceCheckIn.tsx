@@ -20,31 +20,6 @@ interface FaceDetectResult {
 
 const MAX_FAILURES = 2;
 
-/** Renders the hidden video element's stream into a visible container */
-const CameraPreview = ({ videoRef }: { videoRef: React.RefObject<HTMLVideoElement> }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    const container = containerRef.current;
-    if (!video || !container) return;
-
-    // Move the persistent video element into this container and make it visible
-    video.className = "w-full h-full object-cover";
-    video.style.transform = "scaleX(-1)";
-    container.appendChild(video);
-
-    return () => {
-      // Move it back out and hide when unmounting
-      video.className = "hidden";
-      video.style.transform = "";
-      document.body.appendChild(video);
-    };
-  }, [videoRef]);
-
-  return <div ref={containerRef} className="w-full h-full" />;
-};
-
 const FaceCheckIn = ({ onCheckIn, lastCheckIn }: FaceCheckInProps) => {
   const { t } = useLanguage();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -52,6 +27,7 @@ const FaceCheckIn = ({ onCheckIn, lastCheckIn }: FaceCheckInProps) => {
   const streamRef = useRef<MediaStream | null>(null);
   const scanIntervalRef = useRef<number | null>(null);
   const badFrameCountRef = useRef(0);
+  const detectionFailureRef = useRef(0);
   const hasDetectedRef = useRef(false);
 
   const [cameraActive, setCameraActive] = useState(false);
@@ -60,7 +36,6 @@ const FaceCheckIn = ({ onCheckIn, lastCheckIn }: FaceCheckInProps) => {
   const [justCheckedIn, setJustCheckedIn] = useState(false);
   const [guidance, setGuidance] = useState("");
   const [ovalColor, setOvalColor] = useState<"border-muted-foreground" | "border-success" | "border-destructive">("border-muted-foreground");
-  const [failureCount, setFailureCount] = useState(0);
   const [analyzing, setAnalyzing] = useState(false);
 
   useEffect(() => {
@@ -76,8 +51,21 @@ const FaceCheckIn = ({ onCheckIn, lastCheckIn }: FaceCheckInProps) => {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
     setCameraActive(false);
   }, []);
+
+  const switchToManual = useCallback(() => {
+    setShowManual(true);
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current);
+      scanIntervalRef.current = null;
+    }
+    stopCamera();
+    setGuidance("");
+  }, [stopCamera]);
 
   const captureFrame = useCallback((): string | null => {
     const video = videoRef.current;
@@ -87,7 +75,6 @@ const FaceCheckIn = ({ onCheckIn, lastCheckIn }: FaceCheckInProps) => {
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
 
-    // Capture at reasonable resolution for AI analysis
     canvas.width = 320;
     canvas.height = 400;
     ctx.drawImage(video, 0, 0, 320, 400);
@@ -101,7 +88,7 @@ const FaceCheckIn = ({ onCheckIn, lastCheckIn }: FaceCheckInProps) => {
     const frameData = captureFrame();
     if (!frameData) return;
 
-    // Quick local check for dark/bright frames
+    // Local lighting check
     const canvas = canvasRef.current;
     if (canvas) {
       const ctx = canvas.getContext("2d");
@@ -119,18 +106,14 @@ const FaceCheckIn = ({ onCheckIn, lastCheckIn }: FaceCheckInProps) => {
           badFrameCountRef.current++;
           setGuidance("Too dark — find better lighting");
           setOvalColor("border-destructive");
-          if (badFrameCountRef.current >= MAX_FAILURES) {
-            switchToManual();
-          }
+          if (badFrameCountRef.current >= MAX_FAILURES) switchToManual();
           return;
         }
         if (brightPixels / total > 0.8) {
           badFrameCountRef.current++;
           setGuidance("Too bright — reduce lighting");
           setOvalColor("border-destructive");
-          if (badFrameCountRef.current >= MAX_FAILURES) {
-            switchToManual();
-          }
+          if (badFrameCountRef.current >= MAX_FAILURES) switchToManual();
           return;
         }
       }
@@ -146,11 +129,8 @@ const FaceCheckIn = ({ onCheckIn, lastCheckIn }: FaceCheckInProps) => {
 
       if (error || !data) {
         console.error("Face detect error:", error);
-        setFailureCount((prev) => {
-          const next = prev + 1;
-          if (next >= MAX_FAILURES) switchToManual();
-          return next;
-        });
+        detectionFailureRef.current++;
+        if (detectionFailureRef.current >= MAX_FAILURES) switchToManual();
         setGuidance("Detection failed — try again");
         setOvalColor("border-destructive");
         return;
@@ -158,71 +138,64 @@ const FaceCheckIn = ({ onCheckIn, lastCheckIn }: FaceCheckInProps) => {
 
       const result = data as FaceDetectResult;
 
+      // AI-reported lighting issues count toward lighting failures
+      if (result.is_dark) {
+        badFrameCountRef.current++;
+        setGuidance("Too dark — find better lighting");
+        setOvalColor("border-destructive");
+        if (badFrameCountRef.current >= MAX_FAILURES) switchToManual();
+        return;
+      }
+      if (result.is_bright) {
+        badFrameCountRef.current++;
+        setGuidance("Too bright — reduce lighting");
+        setOvalColor("border-destructive");
+        if (badFrameCountRef.current >= MAX_FAILURES) switchToManual();
+        return;
+      }
+
       setGuidance(result.guidance || "");
 
       if (result.face_detected && result.face_in_oval && result.confidence >= 60) {
-        // Success!
         hasDetectedRef.current = true;
         setOvalColor("border-success");
         setGuidance("Face verified ✓");
         setScanning(false);
         setJustCheckedIn(true);
         onCheckIn();
-
-        setTimeout(() => {
-          stopCamera();
-        }, 500);
+        setTimeout(() => stopCamera(), 500);
         setTimeout(() => setJustCheckedIn(false), 3000);
         return;
       }
 
-      if (result.face_detected && !result.face_in_oval) {
-        // Face found but not centered
-        setOvalColor("border-destructive");
-      } else if (result.face_detected) {
-        // Face found, somewhat in oval but low confidence
-        setOvalColor("border-destructive");
-      } else {
-        // No face
-        setOvalColor("border-destructive");
-        setFailureCount((prev) => {
-          const next = prev + 1;
-          if (next >= MAX_FAILURES) switchToManual();
-          return next;
-        });
+      // Face not in oval or no face
+      setOvalColor("border-destructive");
+      if (!result.face_detected) {
+        detectionFailureRef.current++;
+        if (detectionFailureRef.current >= MAX_FAILURES) switchToManual();
       }
     } catch (err) {
       console.error("Analysis error:", err);
-      setFailureCount((prev) => {
-        const next = prev + 1;
-        if (next >= MAX_FAILURES) switchToManual();
-        return next;
-      });
+      detectionFailureRef.current++;
+      if (detectionFailureRef.current >= MAX_FAILURES) switchToManual();
       setGuidance("Detection error — try again");
       setOvalColor("border-destructive");
     } finally {
       setAnalyzing(false);
       setScanning(false);
     }
-  }, [analyzing, captureFrame, onCheckIn, stopCamera]);
-
-  const switchToManual = useCallback(() => {
-    setShowManual(true);
-    if (scanIntervalRef.current) {
-      clearInterval(scanIntervalRef.current);
-      scanIntervalRef.current = null;
-    }
-    stopCamera();
-    setGuidance("");
-  }, [stopCamera]);
+  }, [analyzing, captureFrame, onCheckIn, stopCamera, switchToManual]);
 
   const startCamera = async () => {
     hasDetectedRef.current = false;
     badFrameCountRef.current = 0;
-    setFailureCount(0);
+    detectionFailureRef.current = 0;
     setShowManual(false);
     setOvalColor("border-muted-foreground");
     setGuidance("");
+
+    // Set camera active FIRST so the <video> element renders
+    setCameraActive(true);
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -230,27 +203,52 @@ const FaceCheckIn = ({ onCheckIn, lastCheckIn }: FaceCheckInProps) => {
       });
       streamRef.current = stream;
 
+      // Wait a tick for React to render the video element
+      await new Promise((r) => requestAnimationFrame(r));
+
       const video = videoRef.current;
-      if (!video) return;
+      if (!video) {
+        stream.getTracks().forEach((t) => t.stop());
+        setShowManual(true);
+        setCameraActive(false);
+        return;
+      }
 
       video.srcObject = stream;
-      await new Promise<void>((resolve) => {
-        video.onloadedmetadata = () => resolve();
-      });
-      await video.play();
 
-      setCameraActive(true);
+      await new Promise<void>((resolve, reject) => {
+        if (video.readyState >= 2) return resolve();
+        video.onloadedmetadata = () => resolve();
+        video.onerror = () => reject(new Error("Video error"));
+      });
+
+      await new Promise<void>((resolve) => {
+        if (video.readyState >= 4) return resolve();
+        video.oncanplay = () => resolve();
+      });
+
+      await video.play();
       setGuidance(t("place_face_in_oval"));
 
-      // Start AI detection every 4 seconds
+      // Start AI detection every 4s after 2s warmup
       setTimeout(() => {
         scanIntervalRef.current = window.setInterval(() => {
           analyzeFrame();
         }, 4000);
       }, 2000);
-    } catch (err) {
-      console.error("Camera access denied:", err);
+    } catch (err: any) {
+      console.error("Camera access error:", err);
+      setCameraActive(false);
       setShowManual(true);
+      if (err.name === "NotAllowedError") {
+        setGuidance("Camera permission denied — please allow camera access");
+      } else if (err.name === "NotFoundError") {
+        setGuidance("No camera found on this device");
+      } else if (err.name === "NotReadableError") {
+        setGuidance("Camera is in use by another app");
+      } else {
+        setGuidance("Could not start camera");
+      }
     }
   };
 
@@ -260,15 +258,15 @@ const FaceCheckIn = ({ onCheckIn, lastCheckIn }: FaceCheckInProps) => {
     setTimeout(() => {
       setJustCheckedIn(false);
       setShowManual(false);
-      setFailureCount(0);
       badFrameCountRef.current = 0;
+      detectionFailureRef.current = 0;
     }, 3000);
   };
 
   const retryCamera = () => {
     setShowManual(false);
-    setFailureCount(0);
     badFrameCountRef.current = 0;
+    detectionFailureRef.current = 0;
     startCamera();
   };
 
@@ -283,12 +281,11 @@ const FaceCheckIn = ({ onCheckIn, lastCheckIn }: FaceCheckInProps) => {
     return t("just_now");
   };
 
+  const remainingAttempts = MAX_FAILURES - Math.max(badFrameCountRef.current, detectionFailureRef.current);
+
   return (
     <div className="flex flex-col items-center gap-6 w-full max-w-sm mx-auto">
-      {/* Hidden canvas for frame capture */}
       <canvas ref={canvasRef} className="hidden" />
-      {/* Single persistent video element — always in DOM so ref stays valid */}
-      <video ref={videoRef} autoPlay playsInline muted className="hidden" />
 
       <AnimatePresence mode="wait">
         {justCheckedIn ? (
@@ -310,6 +307,9 @@ const FaceCheckIn = ({ onCheckIn, lastCheckIn }: FaceCheckInProps) => {
             exit={{ opacity: 0 }}
             className="flex flex-col items-center gap-4"
           >
+            {guidance && (
+              <p className="text-destructive text-center text-sm font-semibold mb-2">{guidance}</p>
+            )}
             <p className="text-muted-foreground text-center text-lg font-semibold">
               Camera check-in unavailable
             </p>
@@ -347,9 +347,16 @@ const FaceCheckIn = ({ onCheckIn, lastCheckIn }: FaceCheckInProps) => {
             className="relative flex flex-col items-center"
           >
             <div className="relative w-64 h-80 rounded-3xl overflow-hidden bg-black">
-              {/* Mirror the persistent video into this container */}
-              <CameraPreview videoRef={videoRef} />
-              {/* Oval overlay with dynamic color */}
+              {/* Single React-managed video — no DOM reparenting */}
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full h-full object-cover"
+                style={{ transform: "scaleX(-1)" }}
+              />
+              {/* Oval overlay */}
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div
                   className={`w-48 h-60 rounded-[50%] border-4 ${ovalColor} transition-colors duration-300`}
@@ -363,7 +370,6 @@ const FaceCheckIn = ({ onCheckIn, lastCheckIn }: FaceCheckInProps) => {
               )}
             </div>
 
-            {/* Guidance text */}
             <div className="mt-4 text-center min-h-[3rem]">
               <p className={`font-bold text-lg ${
                 ovalColor === "border-success" ? "text-success" :
@@ -372,11 +378,6 @@ const FaceCheckIn = ({ onCheckIn, lastCheckIn }: FaceCheckInProps) => {
               }`}>
                 {guidance}
               </p>
-              {failureCount > 0 && failureCount < MAX_FAILURES && (
-                <p className="text-muted-foreground text-sm mt-1">
-                  {MAX_FAILURES - failureCount} attempt{MAX_FAILURES - failureCount !== 1 ? "s" : ""} remaining
-                </p>
-              )}
             </div>
           </motion.div>
         ) : (
