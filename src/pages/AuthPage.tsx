@@ -39,22 +39,15 @@ const AuthPage = () => {
     setSubmitting(true);
     try {
       if (isSignUp) {
-        const { data, error } = await supabase.auth.signUp({
+        const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             emailRedirectTo: window.location.origin,
-            data: { full_name: fullName },
+            data: { full_name: fullName, role: "care_staff" },
           },
         });
         if (error) throw error;
-
-        if (data.user) {
-          await supabase.from("user_roles").insert({
-            user_id: data.user.id,
-            role: "care_staff" as const,
-          });
-        }
 
         toast({
           title: "Check your email",
