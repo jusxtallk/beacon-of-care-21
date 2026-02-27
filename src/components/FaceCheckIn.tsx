@@ -20,6 +20,31 @@ interface FaceDetectResult {
 
 const MAX_FAILURES = 2;
 
+/** Renders the hidden video element's stream into a visible container */
+const CameraPreview = ({ videoRef }: { videoRef: React.RefObject<HTMLVideoElement> }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    const container = containerRef.current;
+    if (!video || !container) return;
+
+    // Move the persistent video element into this container and make it visible
+    video.className = "w-full h-full object-cover";
+    video.style.transform = "scaleX(-1)";
+    container.appendChild(video);
+
+    return () => {
+      // Move it back out and hide when unmounting
+      video.className = "hidden";
+      video.style.transform = "";
+      document.body.appendChild(video);
+    };
+  }, [videoRef]);
+
+  return <div ref={containerRef} className="w-full h-full" />;
+};
+
 const FaceCheckIn = ({ onCheckIn, lastCheckIn }: FaceCheckInProps) => {
   const { t } = useLanguage();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -262,6 +287,8 @@ const FaceCheckIn = ({ onCheckIn, lastCheckIn }: FaceCheckInProps) => {
     <div className="flex flex-col items-center gap-6 w-full max-w-sm mx-auto">
       {/* Hidden canvas for frame capture */}
       <canvas ref={canvasRef} className="hidden" />
+      {/* Single persistent video element — always in DOM so ref stays valid */}
+      <video ref={videoRef} autoPlay playsInline muted className="hidden" />
 
       <AnimatePresence mode="wait">
         {justCheckedIn ? (
@@ -320,14 +347,8 @@ const FaceCheckIn = ({ onCheckIn, lastCheckIn }: FaceCheckInProps) => {
             className="relative flex flex-col items-center"
           >
             <div className="relative w-64 h-80 rounded-3xl overflow-hidden bg-black">
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="w-full h-full object-cover"
-                style={{ transform: "scaleX(-1)" }}
-              />
+              {/* Mirror the persistent video into this container */}
+              <CameraPreview videoRef={videoRef} />
               {/* Oval overlay with dynamic color */}
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div
@@ -366,9 +387,6 @@ const FaceCheckIn = ({ onCheckIn, lastCheckIn }: FaceCheckInProps) => {
             exit={{ scale: 0 }}
             className="flex flex-col items-center gap-6"
           >
-            {/* Hidden video for when camera isn't active yet */}
-            <video ref={videoRef} className="hidden" playsInline muted />
-
             <motion.button
               onClick={startCamera}
               className="relative w-52 h-52 rounded-full bg-success flex flex-col items-center justify-center shadow-lg focus:outline-none focus:ring-4 focus:ring-ring"
