@@ -75,8 +75,7 @@ const ElderDetailPage = () => {
 
   // Edit states
   const [editingSchedule, setEditingSchedule] = useState(false);
-  const [newTimes, setNewTimes] = useState("09:00,18:00");
-  const [newGrace, setNewGrace] = useState(60);
+  const [newTime, setNewTime] = useState("09:00");
 
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileForm, setProfileForm] = useState<Partial<ElderProfile>>({});
@@ -146,8 +145,7 @@ const ElderDetailPage = () => {
     const { data } = await supabase.from("check_in_schedules").select("id, schedule_times, days_of_week, grace_period_minutes, is_active").eq("elder_id", elderId).eq("is_active", true).maybeSingle();
     if (data) {
       setSchedule(data);
-      setNewTimes(data.schedule_times.join(","));
-      setNewGrace(data.grace_period_minutes);
+      setNewTime(data.schedule_times[0] || "09:00");
     }
   };
 
@@ -171,11 +169,10 @@ const ElderDetailPage = () => {
 
   const saveSchedule = async () => {
     if (!elderId || !user) return;
-    const times = newTimes.split(",").map((t) => t.trim()).filter(Boolean);
     if (schedule) {
-      await supabase.from("check_in_schedules").update({ schedule_times: times, grace_period_minutes: newGrace }).eq("id", schedule.id);
+      await supabase.from("check_in_schedules").update({ schedule_times: [newTime] }).eq("id", schedule.id);
     } else {
-      await supabase.from("check_in_schedules").insert({ elder_id: elderId, created_by: user.id, schedule_times: times, grace_period_minutes: newGrace });
+      await supabase.from("check_in_schedules").insert({ elder_id: elderId, created_by: user.id, schedule_times: [newTime] });
     }
     setEditingSchedule(false);
     fetchSchedule();
@@ -563,25 +560,33 @@ const ElderDetailPage = () => {
             )}
           </div>
 
+          {/* Show elder's frequency (read-only, set by elder during setup) */}
+          {schedule && (
+            <div className="mb-3 p-3 bg-background rounded-xl border border-border">
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1">Frequency (set by elder)</p>
+              <p className="text-sm font-bold text-card-foreground">
+                {schedule.days_of_week.length === 7 ? "Every day" : `Every 2 days (${schedule.days_of_week.map((d) => dayNames[d]).join(", ")})`}
+              </p>
+            </div>
+          )}
+
           {editingSchedule ? (
             <div className="space-y-3">
               <div>
-                <label className="text-sm font-bold text-card-foreground">Check-in times (comma-separated)</label>
-                <input
-                  value={newTimes}
-                  onChange={(e) => setNewTimes(e.target.value)}
+                <label className="text-sm font-bold text-card-foreground">Check-in Time</label>
+                <select
+                  value={newTime}
+                  onChange={(e) => setNewTime(e.target.value)}
                   className="w-full mt-1 rounded-xl border border-border bg-background px-3 py-2 text-foreground text-sm"
-                  placeholder="09:00,18:00"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-bold text-card-foreground">Grace period (minutes)</label>
-                <input
-                  type="number"
-                  value={newGrace}
-                  onChange={(e) => setNewGrace(Number(e.target.value))}
-                  className="w-full mt-1 rounded-xl border border-border bg-background px-3 py-2 text-foreground text-sm"
-                />
+                >
+                  {Array.from({ length: 48 }, (_, i) => {
+                    const h = Math.floor(i / 2);
+                    const m = i % 2 === 0 ? "00" : "30";
+                    const time24 = `${String(h).padStart(2, "0")}:${m}`;
+                    const ampm = h === 0 ? `12:${m} AM` : h < 12 ? `${h}:${m} AM` : h === 12 ? `12:${m} PM` : `${h - 12}:${m} PM`;
+                    return <option key={time24} value={time24}>{ampm}</option>;
+                  })}
+                </select>
               </div>
               <button onClick={saveSchedule} className="w-full bg-primary text-primary-foreground font-bold py-2 rounded-xl">
                 Save Schedule
@@ -589,9 +594,12 @@ const ElderDetailPage = () => {
             </div>
           ) : schedule ? (
             <div className="text-sm space-y-1">
-              <p><span className="font-bold text-card-foreground">Times:</span> <span className="text-muted-foreground">{schedule.schedule_times.join(", ")}</span></p>
-              <p><span className="font-bold text-card-foreground">Grace period:</span> <span className="text-muted-foreground">{schedule.grace_period_minutes} min</span></p>
-              <p><span className="font-bold text-card-foreground">Days:</span> <span className="text-muted-foreground">{schedule.days_of_week.map((d) => dayNames[d]).join(", ")}</span></p>
+              <p><span className="font-bold text-card-foreground">Check-in Time:</span> <span className="text-muted-foreground">{schedule.schedule_times.map(t => {
+                const [hStr, mStr] = t.split(":");
+                const h = parseInt(hStr);
+                const ampm = h === 0 ? `12:${mStr} AM` : h < 12 ? `${h}:${mStr} AM` : h === 12 ? `12:${mStr} PM` : `${h - 12}:${mStr} PM`;
+                return ampm;
+              }).join(", ")}</span></p>
             </div>
           ) : (
             <p className="text-muted-foreground text-sm">No schedule set yet</p>
