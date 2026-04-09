@@ -75,8 +75,7 @@ const ElderDetailPage = () => {
 
   // Edit states
   const [editingSchedule, setEditingSchedule] = useState(false);
-  const [newTimes, setNewTimes] = useState("09:00,18:00");
-  const [newGrace, setNewGrace] = useState(60);
+  const [newTime, setNewTime] = useState("09:00");
 
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileForm, setProfileForm] = useState<Partial<ElderProfile>>({});
