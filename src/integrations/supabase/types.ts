@@ -536,6 +536,36 @@ export type Database = {
           },
         ]
       }
+      signup_requests: {
+        Row: {
+          approval_token: string
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          processed_at: string | null
+          status: string
+        }
+        Insert: {
+          approval_token?: string
+          created_at?: string
+          email: string
+          full_name: string
+          id?: string
+          processed_at?: string | null
+          status?: string
+        }
+        Update: {
+          approval_token?: string
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          processed_at?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       topics: {
         Row: {
           created_at: string
