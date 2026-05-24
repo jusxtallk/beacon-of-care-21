@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Markdown } from "@/components/Markdown";
-import { ArrowLeft, ArrowRight, CheckCircle2, Circle, MessageSquareQuote } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Circle, MessageSquareQuote, Sword, Loader2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 interface Lesson {
