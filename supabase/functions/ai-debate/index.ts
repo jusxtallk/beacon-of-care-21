@@ -55,6 +55,37 @@ Deno.serve(async (req) => {
       });
     }
 
+    // === AUTH GATE — required before any AI call ===
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const authHeader = req.headers.get("Authorization") || "";
+    const jwt = authHeader.replace("Bearer ", "").trim();
+    if (!jwt) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const userClient = createClient(SUPABASE_URL, SERVICE_KEY);
+    const { data: userData, error: userErr } = await userClient.auth.getUser(jwt);
+    const userId = userData?.user?.id ?? null;
+    const isAnon = (userData?.user?.is_anonymous as boolean | undefined) ?? false;
+    if (!userId || isAnon || userErr) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Verify session belongs to this user (prevents cross-user writes)
+    if (sessionId) {
+      const { data: sess } = await userClient
+        .from("debate_sessions").select("user_id").eq("id", sessionId).maybeSingle();
+      if (!sess || sess.user_id !== userId) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       return new Response(JSON.stringify({ error: "LOVABLE_API_KEY missing" }), {
@@ -86,18 +117,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-    const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const authHeader = req.headers.get("Authorization") || "";
-    const userClient = createClient(SUPABASE_URL, SERVICE_KEY, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    let userId: string | null = null;
-    try {
-      const jwt = authHeader.replace("Bearer ", "");
-      const { data } = await userClient.auth.getUser(jwt);
-      userId = data.user?.id ?? null;
-    } catch (_) {}
+    // userId + userClient already resolved above
+
+
 
     let fullText = "";
     const decoder = new TextDecoder();
