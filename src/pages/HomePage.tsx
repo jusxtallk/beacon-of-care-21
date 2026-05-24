@@ -190,7 +190,7 @@ const HomePage = () => {
             {recommended.map((c) => (
               <button
                 key={c.id}
-                onClick={() => navigate(`/course/${c.id}`)}
+                onClick={() => navigate(`/course/${c.id}`, { state: { from: "/" } })}
                 className="text-left rounded-lg bg-card border border-border p-5 hover:border-foreground/20 transition group"
               >
                 <p className="text-[11px] uppercase tracking-wider text-primary mb-1 flex items-center gap-1">
