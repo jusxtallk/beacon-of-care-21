@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import BottomNav from "@/components/BottomNav";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Flame, Target, MessageSquareQuote, Sparkles } from "lucide-react";
+import { ArrowRight, Flame, Target, MessageSquareQuote, Sparkles, CheckCircle2 } from "lucide-react";
 
 interface ContinueItem {
   lesson_id: string;
@@ -18,12 +18,15 @@ interface RecommendedCourse {
   topic_title: string;
 }
 
+interface CompletedCourse { id: string; title: string; topic_title: string; }
+
 const HomePage = () => {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const [todayMinutes, setTodayMinutes] = useState(0);
   const [continueItems, setContinueItems] = useState<ContinueItem[]>([]);
   const [recommended, setRecommended] = useState<RecommendedCourse[]>([]);
+  const [completedCourses, setCompletedCourses] = useState<CompletedCourse[]>([]);
   const [openGaps, setOpenGaps] = useState(0);
 
   useEffect(() => {
@@ -76,6 +79,36 @@ const HomePage = () => {
         .from("knowledge_gaps").select("id", { count: "exact", head: true })
         .eq("user_id", user.id).eq("resolved", false);
       setOpenGaps(count ?? 0);
+
+      // Completed courses: every lesson in the course has a completed_at
+      const { data: doneProg } = await supabase
+        .from("lesson_progress")
+        .select("lesson_id, lessons(course_id, courses(id, title, topics(title)))")
+        .eq("user_id", user.id).not("completed_at", "is", null);
+      if (doneProg?.length) {
+        const byCourse: Record<string, { done: number; meta: any }> = {};
+        for (const p of doneProg as any[]) {
+          const cid = p.lessons?.course_id;
+          if (!cid) continue;
+          if (!byCourse[cid]) byCourse[cid] = { done: 0, meta: p.lessons?.courses };
+          byCourse[cid].done++;
+        }
+        const ids = Object.keys(byCourse);
+        if (ids.length) {
+          const { data: totals } = await supabase
+            .from("lessons").select("course_id").in("course_id", ids);
+          const totalBy: Record<string, number> = {};
+          (totals ?? []).forEach((l: any) => { totalBy[l.course_id] = (totalBy[l.course_id] ?? 0) + 1; });
+          const completed = ids
+            .filter((cid) => totalBy[cid] && byCourse[cid].done >= totalBy[cid])
+            .map((cid) => ({
+              id: cid,
+              title: byCourse[cid].meta?.title ?? "Course",
+              topic_title: byCourse[cid].meta?.topics?.title ?? "",
+            }));
+          setCompletedCourses(completed);
+        }
+      }
     })();
   }, [user]);
 
@@ -157,7 +190,7 @@ const HomePage = () => {
             {recommended.map((c) => (
               <button
                 key={c.id}
-                onClick={() => navigate(`/course/${c.id}`)}
+                onClick={() => navigate(`/course/${c.id}`, { state: { from: "/" } })}
                 className="text-left rounded-lg bg-card border border-border p-5 hover:border-foreground/20 transition group"
               >
                 <p className="text-[11px] uppercase tracking-wider text-primary mb-1 flex items-center gap-1">
@@ -169,6 +202,31 @@ const HomePage = () => {
             ))}
           </div>
         </section>
+
+        {/* Completed */}
+        {completedCourses.length > 0 && (
+          <section className="mb-8">
+            <h2 className="font-display text-2xl mb-3 flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-primary" /> Completed
+            </h2>
+            <div className="space-y-2">
+              {completedCourses.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => navigate(`/course/${c.id}`, { state: { from: "/" } })}
+                  className="w-full text-left rounded-lg bg-card border border-border p-4 hover:border-foreground/20 transition flex items-center gap-3"
+                >
+                  <CheckCircle2 className="w-4 h-4 text-primary flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] uppercase tracking-wider text-primary">{c.topic_title}</p>
+                    <p className="font-semibold truncate">{c.title}</p>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
       </div>
       <BottomNav />
     </main>

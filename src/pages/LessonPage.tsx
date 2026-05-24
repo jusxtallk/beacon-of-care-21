@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Markdown } from "@/components/Markdown";
@@ -21,6 +21,8 @@ const LessonPage = () => {
   const { lessonId } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const courseFrom = (location.state as { courseFrom?: string } | null)?.courseFrom ?? "/";
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [sources, setSources] = useState<Source[]>([]);
@@ -167,7 +169,7 @@ const LessonPage = () => {
   return (
     <main className="min-h-dvh bg-background pb-20">
       <div className="max-w-2xl mx-auto px-5 pt-8">
-        <button onClick={() => navigate(`/course/${lesson.course_id}`)} aria-label="Back" className="flex items-center gap-1 text-sm text-muted-foreground mb-6 min-h-11">
+        <button onClick={() => navigate(`/course/${lesson.course_id}`, { state: { from: courseFrom } })} aria-label="Back" className="flex items-center gap-1 text-sm text-muted-foreground mb-6 min-h-11">
           <ArrowLeft className="w-4 h-4" /> Back to course
         </button>
 
@@ -363,7 +365,7 @@ const LessonPage = () => {
               Next lesson <ArrowRight className="w-4 h-4" />
             </button>
           ) : (
-            <button onClick={() => navigate(`/course/${lesson.course_id}`)} className="w-full rounded-lg bg-primary text-primary-foreground font-semibold py-3 min-h-11">
+            <button onClick={() => navigate(`/course/${lesson.course_id}`, { state: { from: courseFrom } })} className="w-full rounded-lg bg-primary text-primary-foreground font-semibold py-3 min-h-11">
               Back to course
             </button>
           )}

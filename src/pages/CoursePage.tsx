@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import BottomNav from "@/components/BottomNav";
@@ -12,6 +12,8 @@ const CoursePage = () => {
   const { courseId } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = (location.state as { from?: string } | null)?.from ?? "/";
   const [course, setCourse] = useState<Course | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [completed, setCompleted] = useState<Set<string>>(new Set());
@@ -43,7 +45,7 @@ const CoursePage = () => {
   return (
     <main className="min-h-dvh bg-background pb-28">
       <div className="max-w-2xl mx-auto px-5 pt-8">
-        <button onClick={() => navigate(-1)} aria-label="Back" className="flex items-center gap-1 text-sm text-muted-foreground mb-6 min-h-11">
+        <button onClick={() => navigate(from)} aria-label="Back" className="flex items-center gap-1 text-sm text-muted-foreground mb-6 min-h-11">
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
         <h1 className="font-display text-4xl mb-2">{course.title}</h1>
@@ -61,7 +63,7 @@ const CoursePage = () => {
             return (
               <li key={l.id}>
                 <button
-                  onClick={() => navigate(`/lesson/${l.id}`)}
+                  onClick={() => navigate(`/lesson/${l.id}`, { state: { courseFrom: from } })}
                   className="w-full text-left rounded-lg bg-card border border-border p-4 hover:border-foreground/20 transition flex items-start gap-3"
                 >
                   <div className="flex-shrink-0 mt-0.5">
