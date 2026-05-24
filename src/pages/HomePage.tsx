@@ -18,12 +18,15 @@ interface RecommendedCourse {
   topic_title: string;
 }
 
+interface CompletedCourse { id: string; title: string; topic_title: string; }
+
 const HomePage = () => {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const [todayMinutes, setTodayMinutes] = useState(0);
   const [continueItems, setContinueItems] = useState<ContinueItem[]>([]);
   const [recommended, setRecommended] = useState<RecommendedCourse[]>([]);
+  const [completedCourses, setCompletedCourses] = useState<CompletedCourse[]>([]);
   const [openGaps, setOpenGaps] = useState(0);
 
   useEffect(() => {
