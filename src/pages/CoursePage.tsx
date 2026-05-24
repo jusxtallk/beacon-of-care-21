@@ -63,7 +63,7 @@ const CoursePage = () => {
             return (
               <li key={l.id}>
                 <button
-                  onClick={() => navigate(`/lesson/${l.id}`)}
+                  onClick={() => navigate(`/lesson/${l.id}`, { state: { courseFrom: from } })}
                   className="w-full text-left rounded-lg bg-card border border-border p-4 hover:border-foreground/20 transition flex items-start gap-3"
                 >
                   <div className="flex-shrink-0 mt-0.5">
