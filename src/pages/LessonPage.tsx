@@ -9,8 +9,13 @@ import { toast } from "sonner";
 interface Lesson {
   id: string; course_id: string; title: string; bloom_level: number;
   bloom_label: string; content_md: string; est_minutes: number; sort_order: number;
+  tl_dr: string | null; nuances: string | null;
+  glossary: { term: string; definition: string }[];
+  content_tags: string[];
+  last_verified_at: string | null;
 }
 interface Quiz { id: string; prompt: string; choices: string[]; correct_index: number; explanation: string | null; bloom_level: number; }
+interface Source { idx: number; title: string; url: string; publisher: string | null; }
 
 const LessonPage = () => {
   const { lessonId } = useParams();
@@ -18,6 +23,7 @@ const LessonPage = () => {
   const navigate = useNavigate();
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  const [sources, setSources] = useState<Source[]>([]);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [submitted, setSubmitted] = useState<Record<string, boolean>>({});
   const [nextLessonId, setNextLessonId] = useState<string | null>(null);
@@ -28,10 +34,14 @@ const LessonPage = () => {
     if (!lessonId) return;
     (async () => {
       const { data: l } = await supabase.from("lessons")
-        .select("id,course_id,title,bloom_level,bloom_label,content_md,est_minutes,sort_order")
+        .select("id,course_id,title,bloom_level,bloom_label,content_md,est_minutes,sort_order,tl_dr,nuances,glossary,content_tags,last_verified_at")
         .eq("id", lessonId).maybeSingle();
       if (!l) return;
-      setLesson(l);
+      setLesson({ ...l, glossary: (l.glossary as any) ?? [], content_tags: (l.content_tags as any) ?? [] } as Lesson);
+
+      const { data: srcs } = await supabase.from("lesson_sources")
+        .select("idx,title,url,publisher").eq("lesson_id", lessonId).order("idx");
+      if (srcs) setSources(srcs);
 
       const { data: qs } = await supabase.from("quiz_questions")
         .select("id,prompt,choices,correct_index,explanation,bloom_level")
@@ -122,11 +132,47 @@ const LessonPage = () => {
         <p className="text-[11px] uppercase tracking-widest text-primary mb-2">
           Bloom L{lesson.bloom_level} · {lesson.bloom_label} · {lesson.est_minutes} min
         </p>
-        <h1 className="font-display text-4xl mb-6">{lesson.title}</h1>
+        <h1 className="font-display text-4xl mb-4">{lesson.title}</h1>
 
-        <article className="mb-8">
+        {lesson.content_tags?.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-6">
+            {lesson.content_tags.map((t) => (
+              <span key={t} className="text-[10px] uppercase tracking-wider px-2 py-1 rounded-full bg-muted text-muted-foreground">{t}</span>
+            ))}
+          </div>
+        )}
+
+        {lesson.tl_dr && (
+          <div className="rounded-lg bg-primary/5 border border-primary/20 p-4 mb-4">
+            <p className="text-[11px] uppercase tracking-widest text-primary mb-1">In one sentence</p>
+            <p className="text-foreground">{lesson.tl_dr}</p>
+          </div>
+        )}
+
+        <article className="mb-6">
           <Markdown>{lesson.content_md}</Markdown>
         </article>
+
+        {lesson.nuances && (
+          <div className="rounded-lg bg-card border-l-4 border-l-primary border border-border p-4 mb-6">
+            <p className="text-[11px] uppercase tracking-widest text-muted-foreground mb-1">It's more complicated because…</p>
+            <p className="text-sm text-foreground">{lesson.nuances}</p>
+          </div>
+        )}
+
+        {lesson.glossary?.length > 0 && (
+          <div className="mb-8">
+            <p className="text-[11px] uppercase tracking-widest text-muted-foreground mb-2">Glossary</p>
+            <div className="space-y-2">
+              {lesson.glossary.map((g) => (
+                <div key={g.term} className="text-sm rounded-md bg-muted/40 px-3 py-2">
+                  <span className="font-semibold">{g.term}</span>
+                  <span className="text-muted-foreground"> — {g.definition}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {quizzes.length > 0 && (
           <section className="mb-8">
@@ -214,6 +260,25 @@ const LessonPage = () => {
             </button>
           )}
         </div>
+
+        {sources.length > 0 && (
+          <section className="mb-8 border-t border-border pt-6">
+            <p className="text-[11px] uppercase tracking-widest text-muted-foreground mb-3">Sources</p>
+            <ol className="space-y-2 text-sm">
+              {sources.map((s) => (
+                <li key={s.idx} className="flex gap-2">
+                  <span className="text-muted-foreground tabular-nums">[{s.idx}]</span>
+                  <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-words">
+                    {s.title}{s.publisher ? ` — ${s.publisher}` : ""}
+                  </a>
+                </li>
+              ))}
+            </ol>
+            {lesson.last_verified_at && (
+              <p className="text-xs text-muted-foreground mt-3">Last verified {new Date(lesson.last_verified_at).toLocaleDateString()}</p>
+            )}
+          </section>
+        )}
       </div>
     </main>
   );
