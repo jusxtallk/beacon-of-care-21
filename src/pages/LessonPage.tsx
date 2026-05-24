@@ -169,7 +169,7 @@ const LessonPage = () => {
   return (
     <main className="min-h-dvh bg-background pb-20">
       <div className="max-w-2xl mx-auto px-5 pt-8">
-        <button onClick={() => navigate(`/course/${lesson.course_id}`)} aria-label="Back" className="flex items-center gap-1 text-sm text-muted-foreground mb-6 min-h-11">
+        <button onClick={() => navigate(`/course/${lesson.course_id}`, { state: { from: courseFrom } })} aria-label="Back" className="flex items-center gap-1 text-sm text-muted-foreground mb-6 min-h-11">
           <ArrowLeft className="w-4 h-4" /> Back to course
         </button>
 
