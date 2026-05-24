@@ -79,6 +79,36 @@ const HomePage = () => {
         .from("knowledge_gaps").select("id", { count: "exact", head: true })
         .eq("user_id", user.id).eq("resolved", false);
       setOpenGaps(count ?? 0);
+
+      // Completed courses: every lesson in the course has a completed_at
+      const { data: doneProg } = await supabase
+        .from("lesson_progress")
+        .select("lesson_id, lessons(course_id, courses(id, title, topics(title)))")
+        .eq("user_id", user.id).not("completed_at", "is", null);
+      if (doneProg?.length) {
+        const byCourse: Record<string, { done: number; meta: any }> = {};
+        for (const p of doneProg as any[]) {
+          const cid = p.lessons?.course_id;
+          if (!cid) continue;
+          if (!byCourse[cid]) byCourse[cid] = { done: 0, meta: p.lessons?.courses };
+          byCourse[cid].done++;
+        }
+        const ids = Object.keys(byCourse);
+        if (ids.length) {
+          const { data: totals } = await supabase
+            .from("lessons").select("course_id").in("course_id", ids);
+          const totalBy: Record<string, number> = {};
+          (totals ?? []).forEach((l: any) => { totalBy[l.course_id] = (totalBy[l.course_id] ?? 0) + 1; });
+          const completed = ids
+            .filter((cid) => totalBy[cid] && byCourse[cid].done >= totalBy[cid])
+            .map((cid) => ({
+              id: cid,
+              title: byCourse[cid].meta?.title ?? "Course",
+              topic_title: byCourse[cid].meta?.topics?.title ?? "",
+            }));
+          setCompletedCourses(completed);
+        }
+      }
     })();
   }, [user]);
 
