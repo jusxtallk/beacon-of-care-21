@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import BottomNav from "@/components/BottomNav";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Flame, Target, MessageSquareQuote, Sparkles } from "lucide-react";
+import { ArrowRight, Flame, Target, MessageSquareQuote, Sparkles, CheckCircle2 } from "lucide-react";
 
 interface ContinueItem {
   lesson_id: string;
