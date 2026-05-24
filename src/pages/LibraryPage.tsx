@@ -1,16 +1,19 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import BottomNav from "@/components/BottomNav";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, CheckCircle2 } from "lucide-react";
 
 interface Topic { id: string; title: string; description: string; }
 interface Course { id: string; topic_id: string; title: string; summary: string; level: string; }
 
 const LibraryPage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [topics, setTopics] = useState<Topic[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     (async () => {
@@ -20,14 +23,63 @@ const LibraryPage = () => {
       ]);
       if (ts) setTopics(ts);
       if (cs) setCourses(cs);
+
+      if (user && cs?.length) {
+        const courseIds = cs.map((c) => c.id);
+        const [{ data: totals }, { data: done }] = await Promise.all([
+          supabase.from("lessons").select("course_id").in("course_id", courseIds),
+          supabase.from("lesson_progress")
+            .select("lesson_id, lessons(course_id)")
+            .eq("user_id", user.id).not("completed_at", "is", null),
+        ]);
+        const totalBy: Record<string, number> = {};
+        (totals ?? []).forEach((l: any) => { totalBy[l.course_id] = (totalBy[l.course_id] ?? 0) + 1; });
+        const doneBy: Record<string, number> = {};
+        (done ?? []).forEach((p: any) => {
+          const cid = p.lessons?.course_id;
+          if (cid) doneBy[cid] = (doneBy[cid] ?? 0) + 1;
+        });
+        const ids = new Set<string>();
+        for (const cid of courseIds) {
+          if (totalBy[cid] && doneBy[cid] >= totalBy[cid]) ids.add(cid);
+        }
+        setCompletedIds(ids);
+      }
     })();
-  }, []);
+  }, [user]);
+
+  const completedCourses = courses.filter((c) => completedIds.has(c.id));
 
   return (
     <main className="min-h-dvh bg-background pb-28">
       <div className="max-w-2xl mx-auto px-5 pt-10">
         <h1 className="font-display text-4xl mb-1">Library</h1>
         <p className="text-muted-foreground mb-8 text-sm">Every course, organised by topic. Bloom-staged from <em>Remember</em> to <em>Create</em>.</p>
+
+        {completedCourses.length > 0 && (
+          <section className="mb-10">
+            <h2 className="font-display text-2xl flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-primary" /> Completed
+            </h2>
+            <p className="text-sm text-muted-foreground mb-4">Courses you've finished. Revisit anytime.</p>
+            <div className="space-y-2">
+              {completedCourses.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => navigate(`/course/${c.id}`, { state: { from: "/library" } })}
+                  className="w-full text-left rounded-lg bg-card border border-border p-4 hover:border-foreground/20 transition flex items-start gap-3"
+                >
+                  <CheckCircle2 className="w-4 h-4 text-primary mt-1 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold">{c.title}</p>
+                    <p className="text-sm text-muted-foreground line-clamp-2 mt-0.5">{c.summary}</p>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-muted-foreground mt-1 flex-shrink-0" />
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
 
         {topics.map((t) => {
           const tCourses = courses.filter((c) => c.topic_id === t.id);
@@ -37,20 +89,26 @@ const LibraryPage = () => {
               <h2 className="font-display text-2xl">{t.title}</h2>
               <p className="text-sm text-muted-foreground mb-4">{t.description}</p>
               <div className="space-y-2">
-                {tCourses.map((c) => (
-                  <button
-                    key={c.id}
-                    onClick={() => navigate(`/course/${c.id}`)}
-                    className="w-full text-left rounded-lg bg-card border border-border p-4 hover:border-foreground/20 transition flex items-start gap-3"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold">{c.title}</p>
-                      <p className="text-sm text-muted-foreground line-clamp-2 mt-0.5">{c.summary}</p>
-                      <p className="text-[11px] uppercase tracking-wider text-primary mt-2">{c.level}</p>
-                    </div>
-                    <ArrowRight className="w-4 h-4 text-muted-foreground mt-1 flex-shrink-0" />
-                  </button>
-                ))}
+                {tCourses.map((c) => {
+                  const isDone = completedIds.has(c.id);
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => navigate(`/course/${c.id}`, { state: { from: "/library" } })}
+                      className="w-full text-left rounded-lg bg-card border border-border p-4 hover:border-foreground/20 transition flex items-start gap-3"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold flex items-center gap-2">
+                          {c.title}
+                          {isDone && <CheckCircle2 className="w-4 h-4 text-primary flex-shrink-0" />}
+                        </p>
+                        <p className="text-sm text-muted-foreground line-clamp-2 mt-0.5">{c.summary}</p>
+                        <p className="text-[11px] uppercase tracking-wider text-primary mt-2">{c.level}</p>
+                      </div>
+                      <ArrowRight className="w-4 h-4 text-muted-foreground mt-1 flex-shrink-0" />
+                    </button>
+                  );
+                })}
               </div>
             </section>
           );
