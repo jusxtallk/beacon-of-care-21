@@ -134,17 +134,45 @@ const DebatePage = () => {
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 max-w-2xl w-full mx-auto">
         <div className="space-y-4">
-          {messages.map((m, i) => (
-            <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[85%] rounded-2xl px-4 py-3 ${
-                m.role === "user" ? "bg-primary text-primary-foreground" : "bg-card border border-border"
-              }`}>
-                {m.role === "assistant"
-                  ? <div className="text-sm"><Markdown>{m.content || "…"}</Markdown></div>
-                  : <p className="text-sm whitespace-pre-wrap">{m.content}</p>}
+          {messages.map((m, i) => {
+            const quality = m.role === "assistant"
+              ? m.content.match(/\[\[QUALITY:\s*(substantive|shallow|off_topic|incoherent|bullshit)\s*\]\]/i)?.[1]?.toLowerCase()
+              : null;
+            const clean = m.role === "assistant"
+              ? m.content
+                  .replace(/\[\[GAP:[^\]]*\]\]/gi, "")
+                  .replace(/\[\[QUALITY:[^\]]*\]\]/gi, "")
+                  .trim()
+              : m.content;
+            const flagStyles: Record<string, string> = {
+              shallow: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30",
+              off_topic: "bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30",
+              incoherent: "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30",
+              bullshit: "bg-destructive/15 text-destructive border-destructive/30",
+            };
+            const flagLabel: Record<string, string> = {
+              shallow: "Low depth — not saved to your profile",
+              off_topic: "Off-topic — not saved to your profile",
+              incoherent: "Unclear logic — not saved to your profile",
+              bullshit: "Unverified claim — not saved to your profile",
+            };
+            return (
+              <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div className={`max-w-[85%] rounded-2xl px-4 py-3 ${
+                  m.role === "user" ? "bg-primary text-primary-foreground" : "bg-card border border-border"
+                }`}>
+                  {m.role === "assistant"
+                    ? <div className="text-sm"><Markdown>{clean || "…"}</Markdown></div>
+                    : <p className="text-sm whitespace-pre-wrap">{m.content}</p>}
+                  {quality && quality !== "substantive" && (
+                    <div className={`mt-2 inline-block text-[10px] uppercase tracking-wider font-medium px-2 py-0.5 rounded border ${flagStyles[quality]}`}>
+                      {flagLabel[quality]}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           {streaming && messages[messages.length - 1]?.role !== "assistant" && (
             <div className="flex justify-start">
               <div className="bg-card border border-border rounded-2xl px-4 py-3">
@@ -154,6 +182,7 @@ const DebatePage = () => {
           )}
         </div>
       </div>
+
 
       <div className="border-t border-border bg-background px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <div className="max-w-2xl mx-auto flex gap-2">
