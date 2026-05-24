@@ -50,9 +50,10 @@ const AuthPage = () => {
           <h1 className="font-display text-4xl mb-2">
             {mode === "signin" ? "Welcome back." : "Begin your study."}
           </h1>
-          <p className="text-muted-foreground mb-8 text-sm leading-relaxed">
-            A personal space for learning Singapore — economy, law, governance, diplomacy — from ground zero, with an AI that will debate you.
+          <p className="text-muted-foreground mb-2 text-sm leading-relaxed">
+            A personal space for learning Singapore — economy, law, governance, diplomacy — from ground zero, with <span className="text-foreground font-medium">JustAI</span>, a proprietary debate partner that will sharpen your thinking.
           </p>
+          <p className="text-xs text-muted-foreground mb-8">Created by Justus.</p>
 
           <form onSubmit={submit} className="space-y-3">
             {mode === "signup" && (
