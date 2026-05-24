@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "anyone can request signup" ON public.signup_requests;
