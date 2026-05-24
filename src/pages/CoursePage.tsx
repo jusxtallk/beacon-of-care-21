@@ -45,7 +45,7 @@ const CoursePage = () => {
   return (
     <main className="min-h-dvh bg-background pb-28">
       <div className="max-w-2xl mx-auto px-5 pt-8">
-        <button onClick={() => navigate(-1)} aria-label="Back" className="flex items-center gap-1 text-sm text-muted-foreground mb-6 min-h-11">
+        <button onClick={() => navigate(from)} aria-label="Back" className="flex items-center gap-1 text-sm text-muted-foreground mb-6 min-h-11">
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
         <h1 className="font-display text-4xl mb-2">{course.title}</h1>
