@@ -9,8 +9,13 @@ import { toast } from "sonner";
 interface Lesson {
   id: string; course_id: string; title: string; bloom_level: number;
   bloom_label: string; content_md: string; est_minutes: number; sort_order: number;
+  tl_dr: string | null; nuances: string | null;
+  glossary: { term: string; definition: string }[];
+  content_tags: string[];
+  last_verified_at: string | null;
 }
 interface Quiz { id: string; prompt: string; choices: string[]; correct_index: number; explanation: string | null; bloom_level: number; }
+interface Source { idx: number; title: string; url: string; publisher: string | null; }
 
 const LessonPage = () => {
   const { lessonId } = useParams();
