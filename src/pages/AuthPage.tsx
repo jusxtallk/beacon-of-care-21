@@ -1,194 +1,105 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Heart, Loader2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-
-type AppRole = "elder" | "care_staff";
+import { toast } from "sonner";
+import { BookOpen } from "lucide-react";
 
 const AuthPage = () => {
-  const [step, setStep] = useState<"role" | "auth">("role");
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const { toast } = useToast();
+  const [name, setName] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleElderStart = async () => {
-    setSubmitting(true);
-    try {
-      // Sign in anonymously — no email/password needed for elders
-      const { data, error } = await supabase.auth.signInAnonymously();
-      if (error) throw error;
-
-      if (data.user) {
-        await supabase.from("user_roles").insert({
-          user_id: data.user.id,
-          role: "elder" as const,
-        });
-      }
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleCareStaffSubmit = async (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitting(true);
+    setLoading(true);
     try {
-      if (isSignUp) {
+      if (mode === "signup") {
         const { error } = await supabase.auth.signUp({
-          email,
-          password,
+          email, password,
           options: {
-            emailRedirectTo: window.location.origin,
-            data: { full_name: fullName, role: "care_staff" },
+            emailRedirectTo: `${window.location.origin}/`,
+            data: { full_name: name },
           },
         });
         if (error) throw error;
-
-        toast({
-          title: "Check your email",
-          description: "We sent you a confirmation link.",
-        });
+        toast.success("Account created. Check your email to confirm, then sign in.");
+        setMode("signin");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       }
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast.error(err.message ?? "Something went wrong");
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6">
-      <div className="w-full max-w-sm">
-        {/* Logo */}
-        <div className="flex flex-col items-center mb-10">
-          <div className="w-20 h-20 rounded-full bg-primary flex items-center justify-center mb-4">
-            <Heart className="w-10 h-10 text-primary-foreground" fill="currentColor" />
+    <main className="min-h-dvh bg-background flex flex-col">
+      <div className="flex-1 flex items-center justify-center px-5 py-10">
+        <div className="w-full max-w-sm">
+          <div className="flex items-center gap-2 mb-8">
+            <div className="w-9 h-9 rounded-lg bg-primary grid place-items-center">
+              <BookOpen className="w-5 h-5 text-primary-foreground" />
+            </div>
+            <span className="font-display text-2xl">Athenaeum</span>
           </div>
-          <h1 className="text-4xl font-extrabold text-foreground">SafeCheck</h1>
+
+          <h1 className="font-display text-4xl mb-2">
+            {mode === "signin" ? "Welcome back." : "Begin your study."}
+          </h1>
+          <p className="text-muted-foreground mb-8 text-sm leading-relaxed">
+            A personal space for learning Singapore — economy, law, governance, diplomacy — from ground zero, with an AI that will debate you.
+          </p>
+
+          <form onSubmit={submit} className="space-y-3">
+            {mode === "signup" && (
+              <input
+                type="text"
+                placeholder="Your name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                className="w-full rounded-lg border border-border bg-card px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            )}
+            <input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="w-full rounded-lg border border-border bg-card px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+              className="w-full rounded-lg border border-border bg-card px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-lg bg-primary text-primary-foreground font-semibold py-3 hover:opacity-90 transition disabled:opacity-50 min-h-11"
+            >
+              {loading ? "…" : mode === "signin" ? "Sign in" : "Create account"}
+            </button>
+          </form>
+
+          <button
+            onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
+            className="mt-6 text-sm text-muted-foreground hover:text-foreground transition w-full text-center"
+          >
+            {mode === "signin" ? "New here? Create an account" : "Already have an account? Sign in"}
+          </button>
         </div>
-
-        {step === "role" ? (
-          <div className="space-y-4">
-            <p className="text-center text-muted-foreground text-xl font-semibold mb-6">
-              Who are you?
-            </p>
-
-            {/* Elder — big, friendly, no login */}
-            <button
-              onClick={handleElderStart}
-              disabled={submitting}
-              className="w-full rounded-2xl border-3 border-border bg-card p-8 text-center transition-all hover:border-primary hover:shadow-md active:scale-[0.98] disabled:opacity-50"
-            >
-              {submitting ? (
-                <Loader2 className="w-10 h-10 animate-spin text-primary mx-auto" />
-              ) : (
-                <>
-                  <p className="text-5xl mb-3">👴</p>
-                  <p className="font-extrabold text-card-foreground text-2xl">I'm an Elder</p>
-                  <p className="text-muted-foreground text-lg mt-1">Tap here to get started</p>
-                </>
-              )}
-            </button>
-
-            {/* Care Staff */}
-            <button
-              onClick={() => { setStep("auth"); setIsSignUp(true); }}
-              className="w-full rounded-2xl border-3 border-border bg-card p-6 text-left transition-all hover:border-primary hover:shadow-md active:scale-[0.98]"
-            >
-              <p className="text-3xl mb-1">🏥</p>
-              <p className="font-extrabold text-card-foreground text-xl">Care Staff</p>
-              <p className="text-muted-foreground text-base mt-1">I manage clients</p>
-            </button>
-
-            <p className="text-center text-muted-foreground mt-6 text-sm">
-              Care staff?{" "}
-              <button
-                onClick={() => { setStep("auth"); setIsSignUp(false); }}
-                className="text-primary font-bold underline"
-              >
-                Sign In
-              </button>
-            </p>
-          </div>
-        ) : (
-          <>
-            <p className="text-center text-muted-foreground text-lg mb-6 font-semibold">
-              {isSignUp ? "Create Staff Account" : "Staff Sign In"}
-            </p>
-            <form onSubmit={handleCareStaffSubmit} className="space-y-4">
-              {isSignUp && (
-                <div>
-                  <label className="block text-sm font-bold text-foreground mb-1">Full Name</label>
-                  <input
-                    type="text"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    required
-                    className="w-full rounded-xl border border-border bg-card px-4 py-3 text-lg text-card-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                    placeholder="Your name"
-                  />
-                </div>
-              )}
-
-              <div>
-                <label className="block text-sm font-bold text-foreground mb-1">Email</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="w-full rounded-xl border border-border bg-card px-4 py-3 text-lg text-card-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="you@example.com"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-foreground mb-1">Password</label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={6}
-                  className="w-full rounded-xl border border-border bg-card px-4 py-3 text-lg text-card-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="••••••••"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={submitting}
-                className="w-full bg-primary text-primary-foreground font-bold text-lg py-4 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50"
-              >
-                {submitting ? "Please wait..." : isSignUp ? "Create Account" : "Sign In"}
-              </button>
-            </form>
-
-            <p className="text-center text-muted-foreground mt-6">
-              {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
-              <button onClick={() => setIsSignUp(!isSignUp)} className="text-primary font-bold underline">
-                {isSignUp ? "Sign In" : "Sign Up"}
-              </button>
-            </p>
-
-            <button
-              onClick={() => setStep("role")}
-              className="w-full text-center text-muted-foreground mt-2 underline text-sm"
-            >
-              ← Back
-            </button>
-          </>
-        )}
       </div>
-    </div>
+    </main>
   );
 };
 
