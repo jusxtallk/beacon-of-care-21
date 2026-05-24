@@ -21,6 +21,8 @@ const LessonPage = () => {
   const { lessonId } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const courseFrom = (location.state as { courseFrom?: string } | null)?.courseFrom ?? "/";
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [sources, setSources] = useState<Source[]>([]);
