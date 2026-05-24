@@ -15,16 +15,13 @@ const AuthPage = () => {
     setLoading(true);
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
-          email, password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/`,
-            data: { full_name: name },
-          },
+        const { error } = await supabase.functions.invoke("request-signup", {
+          body: { email, full_name: name },
         });
         if (error) throw error;
-        toast.success("Account created. Check your email to confirm, then sign in.");
+        toast.success("Request submitted. You'll receive an invite email once approved.");
         setMode("signin");
+        setPassword("");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -74,21 +71,28 @@ const AuthPage = () => {
               required
               className="w-full rounded-lg border border-border bg-card px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-              className="w-full rounded-lg border border-border bg-card px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            />
+            {mode === "signin" && (
+              <input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={6}
+                className="w-full rounded-lg border border-border bg-card px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            )}
+            {mode === "signup" && (
+              <p className="text-xs text-muted-foreground leading-relaxed px-1">
+                Access is granted manually. After Justus approves your request, you'll receive an invite email to set your password and sign in.
+              </p>
+            )}
             <button
               type="submit"
               disabled={loading}
               className="w-full rounded-lg bg-primary text-primary-foreground font-semibold py-3 hover:opacity-90 transition disabled:opacity-50 min-h-11"
             >
-              {loading ? "…" : mode === "signin" ? "Sign in" : "Create account"}
+              {loading ? "…" : mode === "signin" ? "Sign in" : "Request access"}
             </button>
           </form>
 
