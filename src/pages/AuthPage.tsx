@@ -15,16 +15,13 @@ const AuthPage = () => {
     setLoading(true);
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
-          email, password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/`,
-            data: { full_name: name },
-          },
+        const { error } = await supabase.functions.invoke("request-signup", {
+          body: { email, full_name: name },
         });
         if (error) throw error;
-        toast.success("Account created. Check your email to confirm, then sign in.");
+        toast.success("Request submitted. You'll receive an invite email once approved.");
         setMode("signin");
+        setPassword("");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
