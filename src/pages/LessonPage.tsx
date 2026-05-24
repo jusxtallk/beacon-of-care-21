@@ -132,11 +132,47 @@ const LessonPage = () => {
         <p className="text-[11px] uppercase tracking-widest text-primary mb-2">
           Bloom L{lesson.bloom_level} · {lesson.bloom_label} · {lesson.est_minutes} min
         </p>
-        <h1 className="font-display text-4xl mb-6">{lesson.title}</h1>
+        <h1 className="font-display text-4xl mb-4">{lesson.title}</h1>
 
-        <article className="mb-8">
+        {lesson.content_tags?.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-6">
+            {lesson.content_tags.map((t) => (
+              <span key={t} className="text-[10px] uppercase tracking-wider px-2 py-1 rounded-full bg-muted text-muted-foreground">{t}</span>
+            ))}
+          </div>
+        )}
+
+        {lesson.tl_dr && (
+          <div className="rounded-lg bg-primary/5 border border-primary/20 p-4 mb-4">
+            <p className="text-[11px] uppercase tracking-widest text-primary mb-1">In one sentence</p>
+            <p className="text-foreground">{lesson.tl_dr}</p>
+          </div>
+        )}
+
+        <article className="mb-6">
           <Markdown>{lesson.content_md}</Markdown>
         </article>
+
+        {lesson.nuances && (
+          <div className="rounded-lg bg-card border-l-4 border-l-primary border border-border p-4 mb-6">
+            <p className="text-[11px] uppercase tracking-widest text-muted-foreground mb-1">It's more complicated because…</p>
+            <p className="text-sm text-foreground">{lesson.nuances}</p>
+          </div>
+        )}
+
+        {lesson.glossary?.length > 0 && (
+          <div className="mb-8">
+            <p className="text-[11px] uppercase tracking-widest text-muted-foreground mb-2">Glossary</p>
+            <div className="space-y-2">
+              {lesson.glossary.map((g) => (
+                <div key={g.term} className="text-sm rounded-md bg-muted/40 px-3 py-2">
+                  <span className="font-semibold">{g.term}</span>
+                  <span className="text-muted-foreground"> — {g.definition}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {quizzes.length > 0 && (
           <section className="mb-8">
