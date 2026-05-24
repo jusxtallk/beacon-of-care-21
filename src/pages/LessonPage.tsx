@@ -23,6 +23,7 @@ const LessonPage = () => {
   const navigate = useNavigate();
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  const [sources, setSources] = useState<Source[]>([]);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [submitted, setSubmitted] = useState<Record<string, boolean>>({});
   const [nextLessonId, setNextLessonId] = useState<string | null>(null);
