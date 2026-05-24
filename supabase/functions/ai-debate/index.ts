@@ -1,4 +1,4 @@
-// Streaming debate AI — Lovable AI Gateway + knowledge-gap extraction
+// Streaming debate AI — Lovable AI Gateway + knowledge-gap extraction + quality gating
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -7,18 +7,38 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const SYSTEM_PROMPT = `You are a relentless Socratic debate partner for a learner studying Singapore — its economy, governance, law, NTUC/tripartism, diplomacy, and ministries. Your job is NOT to validate them; it is to find the holes in their thinking and force them to defend their position with evidence.
+const SYSTEM_PROMPT = `You are a sharp Socratic debate partner. Iron sharpens iron — your job is to find the holes in the user's thinking and make them defend their position with evidence, not to validate them.
 
-Rules:
-- Always pick the strongest counter-position, even if you privately agree. Steelman the other side.
-- Cite real Singapore facts when possible (HDB, CPF, GST, NWC, MAS, ASEAN, FTAs, etc.) but never invent statistics.
-- Push on assumptions. Ask "how do you know?", "what would change your mind?", "what does that imply for X?"
-- Stay tight: 3-6 short paragraphs max per reply, written in Markdown. Use **bold** for the key challenge.
-- End every message with ONE pointed question that exposes their weakest claim.
-- When the user reveals a clear conceptual gap (misunderstands a mechanism, conflates two things, lacks a key fact), you MUST flag it at the very end of your message in a hidden tag exactly like this — on its own line, no other text in the tag:
+## Tone mirroring
+Read the user's latest message. Match their register:
+- If they write tight, formal, citation-heavy prose → respond in the same register.
+- If they joke, use slang, or write loosely → loosen up, banter back, stay playful — but still push on the argument.
+- Never lecture down. Never sound robotic. Read their energy first, then answer.
+
+## Quality gating (CRITICAL)
+Before you reply, silently classify the user's last substantive message:
+- **substantive** — a real claim, argument, or question with content to push on.
+- **shallow** — vague slogans, one-liners with no claim, "idk", "lol", emoji-only, low-effort dodges, or topic-drift small talk.
+- **bullshit** — confidently asserted nonsense, invented "facts", incoherent reasoning that cannot be steelmanned without inventing a position for them.
+
+You MUST flag this with a hidden tag on its own line at the very end of your reply:
+[[QUALITY: substantive|shallow|bullshit]]
+
+Behavior by class:
+- **substantive** → debate hard. Cite real facts when relevant (Singapore: HDB, CPF, GST, NWC, MAS, ASEAN, FTAs — never invent numbers). End with one pointed question that exposes their weakest claim.
+- **shallow** → do not pretend a real debate is happening. Briefly call it out (warmly, matching their tone), banter for one short paragraph, and invite them to give you something with depth. Do NOT emit a GAP tag.
+- **bullshit** → name the move gently ("that's a confident claim — where's it from?"). Do NOT debate the false premise as if it were real. Do NOT emit a GAP tag.
+
+## Gap extraction (only when QUALITY is substantive)
+When the user reveals a clear conceptual gap (misunderstands a mechanism, conflates two things, lacks a key fact), add ONE additional hidden tag on its own line, right before the QUALITY tag, exactly:
 [[GAP: <one concise sentence describing the gap> | severity: 1|2|3]]
-Severity: 1 = minor / phrasing, 2 = real misunderstanding, 3 = foundational missing concept.
-If there is no clear gap this turn, do not emit the tag. Never emit more than one gap per reply.`;
+1 = minor / phrasing, 2 = real misunderstanding, 3 = foundational missing concept.
+If there is no clear gap this turn, omit the GAP tag. Never emit more than one GAP per reply. Never emit a GAP when QUALITY is shallow or bullshit.
+
+## Format
+- Markdown. 2-5 short paragraphs. **Bold** the key challenge.
+- Substantive replies end with one pointed question.
+- Always end the message with the hidden tags on their own lines, nothing after them.`;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -40,10 +60,7 @@ Deno.serve(async (req) => {
     const sysContent = `${SYSTEM_PROMPT}\n\nDebate topic: ${topic || "general"}.`;
     const upstream = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
+      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
         stream: true,
@@ -64,14 +81,12 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Tap the stream: forward to client, accumulate full text to extract GAP tag at end.
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const authHeader = req.headers.get("Authorization") || "";
     const userClient = createClient(SUPABASE_URL, SERVICE_KEY, {
       global: { headers: { Authorization: authHeader } },
     });
-    // get user id from jwt
     let userId: string | null = null;
     try {
       const jwt = authHeader.replace("Bearer ", "");
@@ -88,26 +103,27 @@ Deno.serve(async (req) => {
       async pull(controller) {
         const { value, done } = await reader.read();
         if (done) {
-          // post-process: extract [[GAP: ... | severity: N]]
           if (userId && sessionId) {
-            const m = fullText.match(/\[\[GAP:\s*([^|\]]+?)\s*\|\s*severity:\s*([123])\s*\]\]/i);
-            if (m) {
-              const concept = m[1].trim();
-              const severity = parseInt(m[2], 10);
-              // fetch lesson_id from session
-              const { data: sess } = await userClient.from("debate_sessions")
-                .select("lesson_id").eq("id", sessionId).maybeSingle();
-              await userClient.from("knowledge_gaps").insert({
-                user_id: userId, lesson_id: sess?.lesson_id ?? null,
-                concept, severity,
-              });
+            const quality = fullText.match(/\[\[QUALITY:\s*(substantive|shallow|bullshit)\s*\]\]/i)?.[1]?.toLowerCase();
+            // Only persist gaps when the user gave us something real
+            if (quality === "substantive") {
+              const m = fullText.match(/\[\[GAP:\s*([^|\]]+?)\s*\|\s*severity:\s*([123])\s*\]\]/i);
+              if (m) {
+                const concept = m[1].trim();
+                const severity = parseInt(m[2], 10);
+                const { data: sess } = await userClient.from("debate_sessions")
+                  .select("lesson_id").eq("id", sessionId).maybeSingle();
+                await userClient.from("knowledge_gaps").insert({
+                  user_id: userId, lesson_id: sess?.lesson_id ?? null,
+                  concept, severity,
+                });
+              }
             }
           }
           controller.close();
           return;
         }
         const chunk = decoder.decode(value, { stream: true });
-        // try to extract content deltas to accumulate
         for (const line of chunk.split("\n")) {
           if (!line.startsWith("data: ")) continue;
           const payload = line.slice(6).trim();
@@ -122,9 +138,7 @@ Deno.serve(async (req) => {
       },
     });
 
-    return new Response(stream, {
-      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
-    });
+    return new Response(stream, { headers: { ...corsHeaders, "Content-Type": "text/event-stream" } });
   } catch (e) {
     console.error("debate fn error", e);
     return new Response(JSON.stringify({ error: String(e) }), {

@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Markdown } from "@/components/Markdown";
-import { ArrowLeft, ArrowRight, CheckCircle2, Circle, MessageSquareQuote } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Circle, MessageSquareQuote, Sword, Loader2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 interface Lesson {
@@ -29,6 +29,48 @@ const LessonPage = () => {
   const [nextLessonId, setNextLessonId] = useState<string | null>(null);
   const [completed, setCompleted] = useState(false);
   const [startTime] = useState(Date.now());
+
+  // Sharpen panel state
+  const [sharpenInput, setSharpenInput] = useState("");
+  const [sharpenLoading, setSharpenLoading] = useState(false);
+  const [sharpenResult, setSharpenResult] = useState<null | {
+    core_anchor: string;
+    alignment: "aligned" | "partial" | "off";
+    corrections: string[];
+    fallacies: { name: string; why: string }[];
+    sharper_question: string;
+  }>(null);
+
+  const runSharpen = async () => {
+    if (!sharpenInput.trim() || !lessonId || sharpenLoading) return;
+    setSharpenLoading(true);
+    setSharpenResult(null);
+    try {
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-tutor`;
+      const { data: { session } } = await supabase.auth.getSession();
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token ?? import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ lessonId, userInput: sharpenInput.trim() }),
+      });
+      if (!resp.ok) {
+        if (resp.status === 429) toast.error("Rate limit — wait a moment.");
+        else if (resp.status === 402) toast.error("AI credits exhausted.");
+        else toast.error("Sharpen failed");
+        return;
+      }
+      const json = await resp.json();
+      setSharpenResult(json);
+    } catch (e) {
+      console.error(e);
+      toast.error("Connection error");
+    } finally {
+      setSharpenLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!lessonId) return;
@@ -232,6 +274,72 @@ const LessonPage = () => {
             </div>
           </section>
         )}
+
+        {/* Sharpen — in-lesson tutor */}
+        <section className="mb-6 rounded-lg bg-card border border-border p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <Sword className="w-4 h-4 text-primary" />
+            <h2 className="font-display text-lg">Sharpen</h2>
+          </div>
+          <p className="text-xs text-muted-foreground mb-3">
+            Write a one-sentence summary, a claim, or your own take. The AI re-anchors the core idea, flags logical fallacies and cognitive biases, and hands you a harder question. Iron sharpens iron.
+          </p>
+          <textarea
+            value={sharpenInput}
+            onChange={(e) => setSharpenInput(e.target.value)}
+            rows={3}
+            placeholder="In your own words: what is this lesson really arguing?"
+            className="w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+          <button
+            onClick={runSharpen}
+            disabled={!sharpenInput.trim() || sharpenLoading}
+            className="mt-2 rounded-md bg-primary text-primary-foreground text-sm font-semibold px-4 py-2 disabled:opacity-40 flex items-center gap-2"
+          >
+            {sharpenLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Sharpening…</> : <>Sharpen my thinking</>}
+          </button>
+
+          {sharpenResult && (
+            <div className="mt-4 space-y-3 text-sm">
+              <div className="rounded-md bg-primary/5 border border-primary/20 p-3">
+                <p className="text-[11px] uppercase tracking-widest text-primary mb-1">
+                  Core anchor · {sharpenResult.alignment}
+                </p>
+                <p>{sharpenResult.core_anchor}</p>
+              </div>
+
+              {sharpenResult.corrections.length > 0 && (
+                <div className="rounded-md border border-border p-3">
+                  <p className="text-[11px] uppercase tracking-widest text-muted-foreground mb-2">Corrections</p>
+                  <ul className="list-disc pl-5 space-y-1">
+                    {sharpenResult.corrections.map((c, i) => <li key={i}>{c}</li>)}
+                  </ul>
+                </div>
+              )}
+
+              {sharpenResult.fallacies.length > 0 && (
+                <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <AlertTriangle className="w-3.5 h-3.5 text-destructive" />
+                    <p className="text-[11px] uppercase tracking-widest text-destructive">Bias / fallacy spotted</p>
+                  </div>
+                  <ul className="space-y-2">
+                    {sharpenResult.fallacies.map((f, i) => (
+                      <li key={i}><span className="font-semibold">{f.name}</span> — <span className="text-muted-foreground">{f.why}</span></li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {sharpenResult.sharper_question && (
+                <div className="rounded-md bg-foreground text-background p-3">
+                  <p className="text-[11px] uppercase tracking-widest opacity-60 mb-1">Now defend this</p>
+                  <p>{sharpenResult.sharper_question}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </section>
 
         <div className="space-y-2 mb-8">
           <button
