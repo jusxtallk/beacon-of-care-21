@@ -14,6 +14,7 @@ const LibraryPage = () => {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
+  const [tab, setTab] = useState<"all" | "completed">("all");
 
   useEffect(() => {
     (async () => {
@@ -49,24 +50,39 @@ const LibraryPage = () => {
   }, [user]);
 
   const completedCourses = courses.filter((c) => completedIds.has(c.id));
+  const fromState = tab === "completed" ? "/library?tab=completed" : "/library";
 
   return (
     <main className="min-h-dvh bg-background pb-28">
       <div className="max-w-2xl mx-auto px-5 pt-10">
         <h1 className="font-display text-4xl mb-1">Library</h1>
-        <p className="text-muted-foreground mb-8 text-sm">Every course, organised by topic. Bloom-staged from <em>Remember</em> to <em>Create</em>.</p>
+        <p className="text-muted-foreground mb-6 text-sm">Every course, organised by topic. Bloom-staged from <em>Remember</em> to <em>Create</em>.</p>
 
-        {completedCourses.length > 0 && (
-          <section className="mb-10">
-            <h2 className="font-display text-2xl flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-primary" /> Completed
-            </h2>
-            <p className="text-sm text-muted-foreground mb-4">Courses you've finished. Revisit anytime.</p>
+        <div className="flex gap-1 mb-8 p-1 bg-muted rounded-lg w-fit">
+          <button
+            onClick={() => setTab("all")}
+            className={`px-4 py-1.5 text-sm rounded-md transition ${tab === "all" ? "bg-background shadow-sm font-medium" : "text-muted-foreground"}`}
+          >
+            All courses
+          </button>
+          <button
+            onClick={() => setTab("completed")}
+            className={`px-4 py-1.5 text-sm rounded-md transition flex items-center gap-1.5 ${tab === "completed" ? "bg-background shadow-sm font-medium" : "text-muted-foreground"}`}
+          >
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            Completed {completedCourses.length > 0 && `(${completedCourses.length})`}
+          </button>
+        </div>
+
+        {tab === "completed" ? (
+          completedCourses.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-8 text-center">No completed courses yet. Finish a course to see it here.</p>
+          ) : (
             <div className="space-y-2">
               {completedCourses.map((c) => (
                 <button
                   key={c.id}
-                  onClick={() => navigate(`/course/${c.id}`, { state: { from: "/library" } })}
+                  onClick={() => navigate(`/course/${c.id}`, { state: { from: fromState } })}
                   className="w-full text-left rounded-lg bg-card border border-border p-4 hover:border-foreground/20 transition flex items-start gap-3"
                 >
                   <CheckCircle2 className="w-4 h-4 text-primary mt-1 flex-shrink-0" />
@@ -78,41 +94,41 @@ const LibraryPage = () => {
                 </button>
               ))}
             </div>
-          </section>
+          )
+        ) : (
+          topics.map((t) => {
+            const tCourses = courses.filter((c) => c.topic_id === t.id);
+            if (!tCourses.length) return null;
+            return (
+              <section key={t.id} className="mb-10">
+                <h2 className="font-display text-2xl">{t.title}</h2>
+                <p className="text-sm text-muted-foreground mb-4">{t.description}</p>
+                <div className="space-y-2">
+                  {tCourses.map((c) => {
+                    const isDone = completedIds.has(c.id);
+                    return (
+                      <button
+                        key={c.id}
+                        onClick={() => navigate(`/course/${c.id}`, { state: { from: fromState } })}
+                        className="w-full text-left rounded-lg bg-card border border-border p-4 hover:border-foreground/20 transition flex items-start gap-3"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold flex items-center gap-2">
+                            {c.title}
+                            {isDone && <CheckCircle2 className="w-4 h-4 text-primary flex-shrink-0" />}
+                          </p>
+                          <p className="text-sm text-muted-foreground line-clamp-2 mt-0.5">{c.summary}</p>
+                          <p className="text-[11px] uppercase tracking-wider text-primary mt-2">{c.level}</p>
+                        </div>
+                        <ArrowRight className="w-4 h-4 text-muted-foreground mt-1 flex-shrink-0" />
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })
         )}
-
-        {topics.map((t) => {
-          const tCourses = courses.filter((c) => c.topic_id === t.id);
-          if (!tCourses.length) return null;
-          return (
-            <section key={t.id} className="mb-10">
-              <h2 className="font-display text-2xl">{t.title}</h2>
-              <p className="text-sm text-muted-foreground mb-4">{t.description}</p>
-              <div className="space-y-2">
-                {tCourses.map((c) => {
-                  const isDone = completedIds.has(c.id);
-                  return (
-                    <button
-                      key={c.id}
-                      onClick={() => navigate(`/course/${c.id}`, { state: { from: "/library" } })}
-                      className="w-full text-left rounded-lg bg-card border border-border p-4 hover:border-foreground/20 transition flex items-start gap-3"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold flex items-center gap-2">
-                          {c.title}
-                          {isDone && <CheckCircle2 className="w-4 h-4 text-primary flex-shrink-0" />}
-                        </p>
-                        <p className="text-sm text-muted-foreground line-clamp-2 mt-0.5">{c.summary}</p>
-                        <p className="text-[11px] uppercase tracking-wider text-primary mt-2">{c.level}</p>
-                      </div>
-                      <ArrowRight className="w-4 h-4 text-muted-foreground mt-1 flex-shrink-0" />
-                    </button>
-                  );
-                })}
-              </div>
-            </section>
-          );
-        })}
       </div>
       <BottomNav />
     </main>
