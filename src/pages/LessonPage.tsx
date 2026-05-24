@@ -30,6 +30,48 @@ const LessonPage = () => {
   const [completed, setCompleted] = useState(false);
   const [startTime] = useState(Date.now());
 
+  // Sharpen panel state
+  const [sharpenInput, setSharpenInput] = useState("");
+  const [sharpenLoading, setSharpenLoading] = useState(false);
+  const [sharpenResult, setSharpenResult] = useState<null | {
+    core_anchor: string;
+    alignment: "aligned" | "partial" | "off";
+    corrections: string[];
+    fallacies: { name: string; why: string }[];
+    sharper_question: string;
+  }>(null);
+
+  const runSharpen = async () => {
+    if (!sharpenInput.trim() || !lessonId || sharpenLoading) return;
+    setSharpenLoading(true);
+    setSharpenResult(null);
+    try {
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-tutor`;
+      const { data: { session } } = await supabase.auth.getSession();
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token ?? import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ lessonId, userInput: sharpenInput.trim() }),
+      });
+      if (!resp.ok) {
+        if (resp.status === 429) toast.error("Rate limit — wait a moment.");
+        else if (resp.status === 402) toast.error("AI credits exhausted.");
+        else toast.error("Sharpen failed");
+        return;
+      }
+      const json = await resp.json();
+      setSharpenResult(json);
+    } catch (e) {
+      console.error(e);
+      toast.error("Connection error");
+    } finally {
+      setSharpenLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!lessonId) return;
     (async () => {
