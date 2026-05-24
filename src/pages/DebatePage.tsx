@@ -124,7 +124,7 @@ const DebatePage = () => {
 
   return (
     <main className="min-h-dvh bg-background flex flex-col">
-      <header className="px-5 pt-6 pb-3 border-b border-border">
+      <header className="sticky top-0 z-30 bg-background/95 backdrop-blur px-5 pt-6 pb-3 border-b border-border">
         <button onClick={() => navigate("/debate")} aria-label="Back" className="flex items-center gap-1 text-sm text-muted-foreground mb-2 min-h-11">
           <ArrowLeft className="w-4 h-4" /> Debates
         </button>
