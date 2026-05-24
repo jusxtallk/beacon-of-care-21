@@ -33,10 +33,14 @@ const LessonPage = () => {
     if (!lessonId) return;
     (async () => {
       const { data: l } = await supabase.from("lessons")
-        .select("id,course_id,title,bloom_level,bloom_label,content_md,est_minutes,sort_order")
+        .select("id,course_id,title,bloom_level,bloom_label,content_md,est_minutes,sort_order,tl_dr,nuances,glossary,content_tags,last_verified_at")
         .eq("id", lessonId).maybeSingle();
       if (!l) return;
-      setLesson(l);
+      setLesson({ ...l, glossary: (l.glossary as any) ?? [], content_tags: (l.content_tags as any) ?? [] } as Lesson);
+
+      const { data: srcs } = await supabase.from("lesson_sources")
+        .select("idx,title,url,publisher").eq("lesson_id", lessonId).order("idx");
+      if (srcs) setSources(srcs);
 
       const { data: qs } = await supabase.from("quiz_questions")
         .select("id,prompt,choices,correct_index,explanation,bloom_level")
