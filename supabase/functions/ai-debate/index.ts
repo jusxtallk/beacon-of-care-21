@@ -117,18 +117,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-    const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const authHeader = req.headers.get("Authorization") || "";
-    const userClient = createClient(SUPABASE_URL, SERVICE_KEY, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    let userId: string | null = null;
-    try {
-      const jwt = authHeader.replace("Bearer ", "");
-      const { data } = await userClient.auth.getUser(jwt);
-      userId = data.user?.id ?? null;
-    } catch (_) {}
+    // userId + userClient already resolved above
+
+
 
     let fullText = "";
     const decoder = new TextDecoder();
