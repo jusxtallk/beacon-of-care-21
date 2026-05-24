@@ -194,6 +194,79 @@ export type Database = {
           },
         ]
       }
+      lesson_assets: {
+        Row: {
+          caption: string | null
+          created_at: string
+          id: string
+          kind: string
+          lesson_id: string
+          source_url: string | null
+          storage_path: string
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          lesson_id: string
+          source_url?: string | null
+          storage_path: string
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          lesson_id?: string
+          source_url?: string | null
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_assets_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lesson_blocks: {
+        Row: {
+          created_at: string
+          data: Json
+          id: string
+          kind: string
+          lesson_id: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          data?: Json
+          id?: string
+          kind: string
+          lesson_id: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          id?: string
+          kind?: string
+          lesson_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_blocks_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lesson_progress: {
         Row: {
           completed_at: string | null
@@ -229,39 +302,98 @@ export type Database = {
           },
         ]
       }
+      lesson_sources: {
+        Row: {
+          accessed_at: string
+          excerpt: string | null
+          id: string
+          idx: number
+          lesson_id: string
+          publisher: string | null
+          title: string
+          url: string
+        }
+        Insert: {
+          accessed_at?: string
+          excerpt?: string | null
+          id?: string
+          idx: number
+          lesson_id: string
+          publisher?: string | null
+          title: string
+          url: string
+        }
+        Update: {
+          accessed_at?: string
+          excerpt?: string | null
+          id?: string
+          idx?: number
+          lesson_id?: string
+          publisher?: string | null
+          title?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_sources_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lessons: {
         Row: {
           bloom_label: string
           bloom_level: number
           content_md: string
+          content_tags: Json
           course_id: string
           created_at: string
           est_minutes: number
+          generation_status: string
+          glossary: Json
           id: string
+          last_verified_at: string | null
+          nuances: string | null
           sort_order: number
           title: string
+          tl_dr: string | null
         }
         Insert: {
           bloom_label: string
           bloom_level: number
           content_md: string
+          content_tags?: Json
           course_id: string
           created_at?: string
           est_minutes?: number
+          generation_status?: string
+          glossary?: Json
           id?: string
+          last_verified_at?: string | null
+          nuances?: string | null
           sort_order?: number
           title: string
+          tl_dr?: string | null
         }
         Update: {
           bloom_label?: string
           bloom_level?: number
           content_md?: string
+          content_tags?: Json
           course_id?: string
           created_at?: string
           est_minutes?: number
+          generation_status?: string
+          glossary?: Json
           id?: string
+          last_verified_at?: string | null
+          nuances?: string | null
           sort_order?: number
           title?: string
+          tl_dr?: string | null
         }
         Relationships: [
           {
