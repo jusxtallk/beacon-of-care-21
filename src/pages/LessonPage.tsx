@@ -260,6 +260,25 @@ const LessonPage = () => {
             </button>
           )}
         </div>
+
+        {sources.length > 0 && (
+          <section className="mb-8 border-t border-border pt-6">
+            <p className="text-[11px] uppercase tracking-widest text-muted-foreground mb-3">Sources</p>
+            <ol className="space-y-2 text-sm">
+              {sources.map((s) => (
+                <li key={s.idx} className="flex gap-2">
+                  <span className="text-muted-foreground tabular-nums">[{s.idx}]</span>
+                  <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-words">
+                    {s.title}{s.publisher ? ` — ${s.publisher}` : ""}
+                  </a>
+                </li>
+              ))}
+            </ol>
+            {lesson.last_verified_at && (
+              <p className="text-xs text-muted-foreground mt-3">Last verified {new Date(lesson.last_verified_at).toLocaleDateString()}</p>
+            )}
+          </section>
+        )}
       </div>
     </main>
   );
