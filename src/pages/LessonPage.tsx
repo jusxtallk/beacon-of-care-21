@@ -365,7 +365,7 @@ const LessonPage = () => {
               Next lesson <ArrowRight className="w-4 h-4" />
             </button>
           ) : (
-            <button onClick={() => navigate(`/course/${lesson.course_id}`)} className="w-full rounded-lg bg-primary text-primary-foreground font-semibold py-3 min-h-11">
+            <button onClick={() => navigate(`/course/${lesson.course_id}`, { state: { from: courseFrom } })} className="w-full rounded-lg bg-primary text-primary-foreground font-semibold py-3 min-h-11">
               Back to course
             </button>
           )}
