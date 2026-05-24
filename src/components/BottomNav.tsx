@@ -1,44 +1,32 @@
-import { Heart, Clock, Settings, LayoutDashboard } from "lucide-react";
+import { Home, Library, MessageSquareQuote, User } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
-import { useLanguage } from "@/hooks/useLanguage";
+
+const tabs = [
+  { path: "/", icon: Home, label: "Home" },
+  { path: "/library", icon: Library, label: "Library" },
+  { path: "/debate", icon: MessageSquareQuote, label: "Debate" },
+  { path: "/profile", icon: User, label: "Profile" },
+];
 
 const BottomNav = () => {
-  const location = useLocation();
+  const { pathname } = useLocation();
   const navigate = useNavigate();
-  const { role } = useAuth();
-  const { t } = useLanguage();
-
-  const isElder = role === "elder";
-
-  const elderTabs = [
-    { path: "/", icon: Heart, label: t("checkin") },
-    { path: "/history", icon: Clock, label: t("history") },
-    { path: "/settings", icon: Settings, label: t("settings") },
-  ];
-
-  const caregiverTabs = [
-    { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-    { path: "/settings", icon: Settings, label: "Settings" },
-  ];
-
-  const tabs = isElder ? elderTabs : caregiverTabs;
-
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border px-4 pb-6 pt-2 z-50">
-      <div className="flex justify-around max-w-md mx-auto">
-        {tabs.map((tab) => {
-          const isActive = location.pathname === tab.path;
+    <nav className="fixed bottom-0 inset-x-0 z-40 bg-background/95 backdrop-blur border-t border-border pb-[env(safe-area-inset-bottom)]">
+      <div className="max-w-2xl mx-auto flex justify-around px-2 py-1.5">
+        {tabs.map((t) => {
+          const active = pathname === t.path || (t.path !== "/" && pathname.startsWith(t.path));
           return (
             <button
-              key={tab.path}
-              onClick={() => navigate(tab.path)}
-              className={`flex flex-col items-center gap-1 px-6 py-2 rounded-xl transition-colors ${
-                isActive ? "text-primary" : "text-muted-foreground"
+              key={t.path}
+              onClick={() => navigate(t.path)}
+              aria-label={t.label}
+              className={`flex flex-col items-center gap-0.5 px-4 py-2 rounded-lg min-h-11 min-w-11 transition-colors ${
+                active ? "text-primary" : "text-muted-foreground"
               }`}
             >
-              <tab.icon className="w-7 h-7" strokeWidth={isActive ? 2.5 : 2} />
-              <span className="text-sm font-semibold">{tab.label}</span>
+              <t.icon className="w-5 h-5" strokeWidth={active ? 2.5 : 2} />
+              <span className="text-[11px] font-medium">{t.label}</span>
             </button>
           );
         })}
@@ -46,5 +34,4 @@ const BottomNav = () => {
     </nav>
   );
 };
-
 export default BottomNav;

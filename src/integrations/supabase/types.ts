@@ -14,307 +14,461 @@ export type Database = {
   }
   public: {
     Tables: {
-      alerts: {
-        Row: {
-          alert_type: string
-          created_at: string
-          elder_id: string
-          id: string
-          is_read: boolean
-          message: string | null
-        }
-        Insert: {
-          alert_type?: string
-          created_at?: string
-          elder_id: string
-          id?: string
-          is_read?: boolean
-          message?: string | null
-        }
-        Update: {
-          alert_type?: string
-          created_at?: string
-          elder_id?: string
-          id?: string
-          is_read?: boolean
-          message?: string | null
-        }
-        Relationships: []
-      }
-      care_relationships: {
-        Row: {
-          caregiver_id: string
-          created_at: string
-          elder_id: string
-          id: string
-          relationship_type: string
-        }
-        Insert: {
-          caregiver_id: string
-          created_at?: string
-          elder_id: string
-          id?: string
-          relationship_type?: string
-        }
-        Update: {
-          caregiver_id?: string
-          created_at?: string
-          elder_id?: string
-          id?: string
-          relationship_type?: string
-        }
-        Relationships: []
-      }
-      check_in_schedules: {
+      courses: {
         Row: {
           created_at: string
-          created_by: string | null
-          days_of_week: number[]
-          elder_id: string
-          grace_period_minutes: number
           id: string
-          is_active: boolean
-          schedule_times: string[]
-          updated_at: string
+          level: string
+          slug: string
+          sort_order: number
+          summary: string
+          title: string
+          topic_id: string
         }
         Insert: {
           created_at?: string
-          created_by?: string | null
-          days_of_week?: number[]
-          elder_id: string
-          grace_period_minutes?: number
           id?: string
-          is_active?: boolean
-          schedule_times?: string[]
-          updated_at?: string
+          level?: string
+          slug: string
+          sort_order?: number
+          summary: string
+          title: string
+          topic_id: string
         }
         Update: {
           created_at?: string
-          created_by?: string | null
-          days_of_week?: number[]
-          elder_id?: string
-          grace_period_minutes?: number
           id?: string
-          is_active?: boolean
-          schedule_times?: string[]
-          updated_at?: string
+          level?: string
+          slug?: string
+          sort_order?: number
+          summary?: string
+          title?: string
+          topic_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "courses_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
       }
-      check_ins: {
+      daily_activity: {
         Row: {
-          battery_level: number | null
-          checked_in_at: string
-          id: string
-          is_charging: boolean | null
-          last_app_usage_at: string | null
+          activity_date: string
+          lessons_completed: number
+          minutes: number
           user_id: string
         }
         Insert: {
-          battery_level?: number | null
-          checked_in_at?: string
-          id?: string
-          is_charging?: boolean | null
-          last_app_usage_at?: string | null
+          activity_date?: string
+          lessons_completed?: number
+          minutes?: number
           user_id: string
         }
         Update: {
-          battery_level?: number | null
-          checked_in_at?: string
-          id?: string
-          is_charging?: boolean | null
-          last_app_usage_at?: string | null
+          activity_date?: string
+          lessons_completed?: number
+          minutes?: number
           user_id?: string
         }
         Relationships: []
       }
-      data_preferences: {
+      debate_messages: {
         Row: {
-          daily_reminder: boolean
-          id: string
-          share_app_usage: boolean
-          share_battery: boolean
-          share_location: boolean
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          daily_reminder?: boolean
-          id?: string
-          share_app_usage?: boolean
-          share_battery?: boolean
-          share_location?: boolean
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          daily_reminder?: boolean
-          id?: string
-          share_app_usage?: boolean
-          share_battery?: boolean
-          share_location?: boolean
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      elder_notes: {
-        Row: {
-          author_id: string | null
           content: string
           created_at: string
-          elder_id: string
           id: string
-          updated_at: string
+          role: string
+          session_id: string
         }
         Insert: {
-          author_id?: string | null
           content: string
           created_at?: string
-          elder_id: string
           id?: string
-          updated_at?: string
+          role: string
+          session_id: string
         }
         Update: {
-          author_id?: string | null
           content?: string
           created_at?: string
-          elder_id?: string
           id?: string
-          updated_at?: string
+          role?: string
+          session_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "debate_messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "debate_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
-      health_conditions: {
+      debate_sessions: {
         Row: {
-          condition_name: string
           created_at: string
-          diagnosed_date: string | null
-          elder_id: string
+          ended_at: string | null
           id: string
-          notes: string | null
-          severity: string | null
-          updated_at: string
+          lesson_id: string | null
+          stance: string | null
+          topic_title: string
+          user_id: string
         }
         Insert: {
-          condition_name: string
           created_at?: string
-          diagnosed_date?: string | null
-          elder_id: string
+          ended_at?: string | null
           id?: string
-          notes?: string | null
-          severity?: string | null
-          updated_at?: string
+          lesson_id?: string | null
+          stance?: string | null
+          topic_title: string
+          user_id: string
         }
         Update: {
-          condition_name?: string
           created_at?: string
-          diagnosed_date?: string | null
-          elder_id?: string
+          ended_at?: string | null
           id?: string
-          notes?: string | null
-          severity?: string | null
-          updated_at?: string
+          lesson_id?: string | null
+          stance?: string | null
+          topic_title?: string
+          user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "debate_sessions_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_gaps: {
+        Row: {
+          concept: string
+          created_at: string
+          id: string
+          lesson_id: string | null
+          resolved: boolean
+          severity: number
+          topic_id: string | null
+          user_id: string
+        }
+        Insert: {
+          concept: string
+          created_at?: string
+          id?: string
+          lesson_id?: string | null
+          resolved?: boolean
+          severity?: number
+          topic_id?: string | null
+          user_id: string
+        }
+        Update: {
+          concept?: string
+          created_at?: string
+          id?: string
+          lesson_id?: string | null
+          resolved?: boolean
+          severity?: number
+          topic_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_gaps_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_gaps_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lesson_progress: {
+        Row: {
+          completed_at: string | null
+          id: string
+          last_seen_at: string
+          lesson_id: string
+          minutes_spent: number
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          id?: string
+          last_seen_at?: string
+          lesson_id: string
+          minutes_spent?: number
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          id?: string
+          last_seen_at?: string
+          lesson_id?: string
+          minutes_spent?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_progress_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lessons: {
+        Row: {
+          bloom_label: string
+          bloom_level: number
+          content_md: string
+          course_id: string
+          created_at: string
+          est_minutes: number
+          id: string
+          sort_order: number
+          title: string
+        }
+        Insert: {
+          bloom_label: string
+          bloom_level: number
+          content_md: string
+          course_id: string
+          created_at?: string
+          est_minutes?: number
+          id?: string
+          sort_order?: number
+          title: string
+        }
+        Update: {
+          bloom_label?: string
+          bloom_level?: number
+          content_md?: string
+          course_id?: string
+          created_at?: string
+          est_minutes?: number
+          id?: string
+          sort_order?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lessons_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
-          address: string | null
           avatar_url: string | null
           created_at: string
-          date_of_birth: string | null
-          emergency_contact_name: string | null
-          emergency_contact_phone: string | null
+          current_streak: number
+          daily_goal_minutes: number
           full_name: string
-          gender: string | null
           id: string
-          link_code: string | null
-          nric_last4: string | null
+          last_active_date: string | null
+          onboarded: boolean
           phone: string | null
-          preferred_language: string
-          setup_completed: boolean
           updated_at: string
           user_id: string
         }
         Insert: {
-          address?: string | null
           avatar_url?: string | null
           created_at?: string
-          date_of_birth?: string | null
-          emergency_contact_name?: string | null
-          emergency_contact_phone?: string | null
+          current_streak?: number
+          daily_goal_minutes?: number
           full_name?: string
-          gender?: string | null
           id?: string
-          link_code?: string | null
-          nric_last4?: string | null
+          last_active_date?: string | null
+          onboarded?: boolean
           phone?: string | null
-          preferred_language?: string
-          setup_completed?: boolean
           updated_at?: string
           user_id: string
         }
         Update: {
-          address?: string | null
           avatar_url?: string | null
           created_at?: string
-          date_of_birth?: string | null
-          emergency_contact_name?: string | null
-          emergency_contact_phone?: string | null
+          current_streak?: number
+          daily_goal_minutes?: number
           full_name?: string
-          gender?: string | null
           id?: string
-          link_code?: string | null
-          nric_last4?: string | null
+          last_active_date?: string | null
+          onboarded?: boolean
           phone?: string | null
-          preferred_language?: string
-          setup_completed?: boolean
           updated_at?: string
           user_id?: string
         }
         Relationships: []
       }
-      user_roles: {
+      quiz_attempts: {
         Row: {
+          bloom_level: number
+          created_at: string
           id: string
-          role: Database["public"]["Enums"]["app_role"]
+          is_correct: boolean
+          lesson_id: string
+          question_id: string
+          selected_index: number
           user_id: string
         }
         Insert: {
+          bloom_level: number
+          created_at?: string
           id?: string
-          role: Database["public"]["Enums"]["app_role"]
+          is_correct: boolean
+          lesson_id: string
+          question_id: string
+          selected_index: number
           user_id: string
         }
         Update: {
+          bloom_level?: number
+          created_at?: string
           id?: string
-          role?: Database["public"]["Enums"]["app_role"]
+          is_correct?: boolean
+          lesson_id?: string
+          question_id?: string
+          selected_index?: number
           user_id?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_attempts_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_attempts_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quiz_questions: {
+        Row: {
+          bloom_level: number
+          choices: Json
+          correct_index: number
+          explanation: string | null
+          id: string
+          lesson_id: string
+          prompt: string
+          sort_order: number
+        }
+        Insert: {
+          bloom_level: number
+          choices: Json
+          correct_index: number
+          explanation?: string | null
+          id?: string
+          lesson_id: string
+          prompt: string
+          sort_order?: number
+        }
+        Update: {
+          bloom_level?: number
+          choices?: Json
+          correct_index?: number
+          explanation?: string | null
+          id?: string
+          lesson_id?: string
+          prompt?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_questions_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      topics: {
+        Row: {
+          created_at: string
+          description: string
+          icon: string
+          id: string
+          slug: string
+          sort_order: number
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          icon?: string
+          id?: string
+          slug: string
+          sort_order?: number
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          icon?: string
+          id?: string
+          slug?: string
+          sort_order?: number
+          title?: string
+        }
         Relationships: []
+      }
+      user_interests: {
+        Row: {
+          created_at: string
+          topic_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          topic_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          topic_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_interests_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      has_role: {
-        Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
-        }
-        Returns: boolean
-      }
-      lookup_elder_by_code: {
-        Args: { _code: string }
-        Returns: {
-          full_name: string
-          user_id: string
-        }[]
-      }
+      [_ in never]: never
     }
     Enums: {
-      app_role: "elder" | "family" | "care_staff"
+      [_ in never]: never
     }
     CompositeTypes: {
       [_ in never]: never
@@ -441,8 +595,6 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {
-      app_role: ["elder", "family", "care_staff"],
-    },
+    Enums: {},
   },
 } as const
