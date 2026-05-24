@@ -202,6 +202,31 @@ const HomePage = () => {
             ))}
           </div>
         </section>
+
+        {/* Completed */}
+        {completedCourses.length > 0 && (
+          <section className="mb-8">
+            <h2 className="font-display text-2xl mb-3 flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-primary" /> Completed
+            </h2>
+            <div className="space-y-2">
+              {completedCourses.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => navigate(`/course/${c.id}`, { state: { from: "/" } })}
+                  className="w-full text-left rounded-lg bg-card border border-border p-4 hover:border-foreground/20 transition flex items-center gap-3"
+                >
+                  <CheckCircle2 className="w-4 h-4 text-primary flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] uppercase tracking-wider text-primary">{c.topic_title}</p>
+                    <p className="font-semibold truncate">{c.title}</p>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
       </div>
       <BottomNav />
     </main>
