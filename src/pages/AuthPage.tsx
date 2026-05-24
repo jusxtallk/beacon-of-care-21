@@ -71,21 +71,28 @@ const AuthPage = () => {
               required
               className="w-full rounded-lg border border-border bg-card px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-              className="w-full rounded-lg border border-border bg-card px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            />
+            {mode === "signin" && (
+              <input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={6}
+                className="w-full rounded-lg border border-border bg-card px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            )}
+            {mode === "signup" && (
+              <p className="text-xs text-muted-foreground leading-relaxed px-1">
+                Access is granted manually. After Justus approves your request, you'll receive an invite email to set your password and sign in.
+              </p>
+            )}
             <button
               type="submit"
               disabled={loading}
               className="w-full rounded-lg bg-primary text-primary-foreground font-semibold py-3 hover:opacity-90 transition disabled:opacity-50 min-h-11"
             >
-              {loading ? "…" : mode === "signin" ? "Sign in" : "Create account"}
+              {loading ? "…" : mode === "signin" ? "Sign in" : "Request access"}
             </button>
           </form>
 
