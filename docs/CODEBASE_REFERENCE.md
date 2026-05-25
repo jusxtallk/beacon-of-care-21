@@ -475,19 +475,19 @@ Channel: `elder-detail-{elderId}`
 
 ---
 
-## 12. PWA Configuration
+## 12. Install Metadata
 
-**File**: `vite.config.ts` → `VitePWA` plugin
+**Files**: `public/manifest.webmanifest`, `public/sw.js`, `public/service-worker.js`
 
 ```json
 {
-  "name": "SafeCheck - Elderly Wellbeing",
-  "short_name": "SafeCheck",
-  "theme_color": "#2a9d6e",
-  "background_color": "#f5f9f7",
+  "name": "Athenaeum — Personalised learning on Singapore",
+  "short_name": "Athenaeum",
+  "theme_color": "#c4654a",
+  "background_color": "#faf8f5",
   "display": "standalone",
   "orientation": "portrait",
-  "start_url": "/",
+  "start_url": "/?app=athenaeum",
   "icons": [
     { "src": "/pwa-192.png", "sizes": "192x192" },
     { "src": "/pwa-512.png", "sizes": "512x512" },
@@ -496,8 +496,8 @@ Channel: `elder-detail-{elderId}`
 }
 ```
 
-- `registerType: "autoUpdate"` — Service worker auto-updates
-- `navigateFallbackDenylist: [/^\/~oauth/]` — Excludes OAuth callback routes from SW
+- `manifest.webmanifest` provides install name, icon, start URL, and theme colors
+- `sw.js` and `service-worker.js` are cleanup workers that remove stale previously-installed caches/workers
 
 ---
 
@@ -508,7 +508,7 @@ Channel: `elder-detail-{elderId}`
 ```typescript
 {
   appId: 'app.lovable.f5e4f831fb0148738b2eaea3cedc7424',
-  appName: 'SafeCheck',
+  appName: 'Athenaeum',
   webDir: 'dist',
   server: {
     url: 'https://f5e4f831-fb01-4873-8b2e-aea3cedc7424.lovableproject.com?forceHideBadge=true',
