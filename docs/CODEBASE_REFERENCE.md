@@ -489,9 +489,9 @@ Channel: `elder-detail-{elderId}`
   "orientation": "portrait",
   "start_url": "/?app=athenaeum",
   "icons": [
-    { "src": "/pwa-192.png", "sizes": "192x192" },
-    { "src": "/pwa-512.png", "sizes": "512x512" },
-    { "src": "/pwa-512.png", "sizes": "512x512", "purpose": "maskable" }
+    { "src": "/athenaeum-192.png", "sizes": "192x192" },
+    { "src": "/athenaeum-512.png", "sizes": "512x512" },
+    { "src": "/athenaeum-512.png", "sizes": "512x512", "purpose": "maskable" }
   ]
 }
 ```
