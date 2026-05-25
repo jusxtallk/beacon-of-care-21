@@ -30,7 +30,7 @@ Athenaeum is a mobile-first learning app that helps users study Singapore's econ
 | Animation | framer-motion | ^12.34.2 |
 | Backend | Supabase (Lovable Cloud) | @supabase/supabase-js ^2.97.0 |
 | Mobile | Capacitor (iOS + Android) | ^8.1.0 |
-| PWA | vite-plugin-pwa | ^1.2.0 |
+| Installability | Static manifest + cleanup service worker | Custom files in `public/` |
 | Font | Nunito (Google Fonts) | 400-900 weights |
 | Date utils | date-fns | ^3.6.0 |
 | Haptics | @capacitor/haptics | ^8.0.0 |
@@ -44,7 +44,7 @@ Athenaeum is a mobile-first learning app that helps users study Singapore's econ
 
 | File | Purpose |
 |------|---------|
-| `vite.config.ts` | Vite config: React SWC plugin, lovable-tagger (dev only), VitePWA manifest, path aliases |
+| `vite.config.ts` | Vite config: React SWC plugin, lovable-tagger (dev only), path aliases |
 | `capacitor.config.ts` | Capacitor config: appId `app.lovable.f5e4f831fb0148738b2eaea3cedc7424`, webDir `dist`, remote server URL |
 | `tailwind.config.ts` | Tailwind theme extension with custom colors (success, warning, danger, sidebar tokens) |
 | `index.html` | Entry HTML, loads `/src/main.tsx` |
