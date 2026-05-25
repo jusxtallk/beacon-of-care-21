@@ -1,14 +1,14 @@
-# SafeCheck — Codebase Reference
+# Athenaeum — Codebase Reference
 
 > **Purpose**: Comprehensive technical reference for AI agents and developers working on this codebase.  
 > **Last updated**: 2026-02-27  
-> **App**: SafeCheck — an elderly wellbeing check-in application
+> **App**: Athenaeum — a personalised learning application about Singapore
 
 ---
 
 ## 1. Project Overview
 
-SafeCheck is a mobile-first web app that allows elderly users ("elders") to perform daily wellbeing check-ins (via face detection or manual tap). Caregivers (family members or care staff) monitor their elders through a dashboard, receive alerts on missed check-ins, and manage health records.
+Athenaeum is a mobile-first learning app that helps users study Singapore's economy, governance, law, labour movement, and diplomacy through structured lessons and AI-guided debate.
 
 **Key user flows:**
 - **Elder**: Opens app → face scan or manual "I'm OK" tap → check-in recorded → caregivers notified
@@ -30,7 +30,7 @@ SafeCheck is a mobile-first web app that allows elderly users ("elders") to perf
 | Animation | framer-motion | ^12.34.2 |
 | Backend | Supabase (Lovable Cloud) | @supabase/supabase-js ^2.97.0 |
 | Mobile | Capacitor (iOS + Android) | ^8.1.0 |
-| PWA | vite-plugin-pwa | ^1.2.0 |
+| Installability | Static manifest + cleanup service worker | Custom files in `public/` |
 | Font | Nunito (Google Fonts) | 400-900 weights |
 | Date utils | date-fns | ^3.6.0 |
 | Haptics | @capacitor/haptics | ^8.0.0 |
@@ -44,7 +44,7 @@ SafeCheck is a mobile-first web app that allows elderly users ("elders") to perf
 
 | File | Purpose |
 |------|---------|
-| `vite.config.ts` | Vite config: React SWC plugin, lovable-tagger (dev only), VitePWA manifest, path aliases |
+| `vite.config.ts` | Vite config: React SWC plugin, lovable-tagger (dev only), path aliases |
 | `capacitor.config.ts` | Capacitor config: appId `app.lovable.f5e4f831fb0148738b2eaea3cedc7424`, webDir `dist`, remote server URL |
 | `tailwind.config.ts` | Tailwind theme extension with custom colors (success, warning, danger, sidebar tokens) |
 | `index.html` | Entry HTML, loads `/src/main.tsx` |
@@ -475,29 +475,29 @@ Channel: `elder-detail-{elderId}`
 
 ---
 
-## 12. PWA Configuration
+## 12. Install Metadata
 
-**File**: `vite.config.ts` → `VitePWA` plugin
+**Files**: `public/manifest.webmanifest`, `public/sw.js`, `public/service-worker.js`
 
 ```json
 {
-  "name": "SafeCheck - Elderly Wellbeing",
-  "short_name": "SafeCheck",
-  "theme_color": "#2a9d6e",
-  "background_color": "#f5f9f7",
+  "name": "Athenaeum — Personalised learning on Singapore",
+  "short_name": "Athenaeum",
+  "theme_color": "#c4654a",
+  "background_color": "#faf8f5",
   "display": "standalone",
   "orientation": "portrait",
-  "start_url": "/",
+  "start_url": "/?app=athenaeum",
   "icons": [
-    { "src": "/pwa-192.png", "sizes": "192x192" },
-    { "src": "/pwa-512.png", "sizes": "512x512" },
-    { "src": "/pwa-512.png", "sizes": "512x512", "purpose": "maskable" }
+    { "src": "/athenaeum-192.png", "sizes": "192x192" },
+    { "src": "/athenaeum-512.png", "sizes": "512x512" },
+    { "src": "/athenaeum-512.png", "sizes": "512x512", "purpose": "maskable" }
   ]
 }
 ```
 
-- `registerType: "autoUpdate"` — Service worker auto-updates
-- `navigateFallbackDenylist: [/^\/~oauth/]` — Excludes OAuth callback routes from SW
+- `manifest.webmanifest` provides install name, icon, start URL, and theme colors
+- `sw.js` and `service-worker.js` are cleanup workers that remove stale previously-installed caches/workers
 
 ---
 
@@ -508,7 +508,7 @@ Channel: `elder-detail-{elderId}`
 ```typescript
 {
   appId: 'app.lovable.f5e4f831fb0148738b2eaea3cedc7424',
-  appName: 'SafeCheck',
+  appName: 'Athenaeum',
   webDir: 'dist',
   server: {
     url: 'https://f5e4f831-fb01-4873-8b2e-aea3cedc7424.lovableproject.com?forceHideBadge=true',
