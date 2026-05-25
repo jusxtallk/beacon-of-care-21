@@ -1,14 +1,14 @@
-# SafeCheck — Codebase Reference
+# Athenaeum — Codebase Reference
 
 > **Purpose**: Comprehensive technical reference for AI agents and developers working on this codebase.  
 > **Last updated**: 2026-02-27  
-> **App**: SafeCheck — an elderly wellbeing check-in application
+> **App**: Athenaeum — a personalised learning application about Singapore
 
 ---
 
 ## 1. Project Overview
 
-SafeCheck is a mobile-first web app that allows elderly users ("elders") to perform daily wellbeing check-ins (via face detection or manual tap). Caregivers (family members or care staff) monitor their elders through a dashboard, receive alerts on missed check-ins, and manage health records.
+Athenaeum is a mobile-first learning app that helps users study Singapore's economy, governance, law, labour movement, and diplomacy through structured lessons and AI-guided debate.
 
 **Key user flows:**
 - **Elder**: Opens app → face scan or manual "I'm OK" tap → check-in recorded → caregivers notified
